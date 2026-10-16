@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using AgentController.Models;
 using AgentController.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -20,70 +21,58 @@ public class PipelinesController : ControllerBase
     public IActionResult GetAll() => Ok(_promptLoader.GetPipelines());
 
     [HttpGet("{name}")]
-    public IActionResult Get(string name)
-    {
-        try
-        {
-            return Ok(_promptLoader.GetPipeline(name));
-        }
-        catch (FileNotFoundException)
-        {
-            return NotFound(new { error = $"Pipeline '{name}' not found" });
-        }
-    }
+    public IActionResult Get(string name) =>
+        Handle(() => Ok(_promptLoader.GetPipeline(name)));
 
     [HttpGet("{name}/prompts/{file}")]
-    public IActionResult GetPrompt(string name, string file)
-    {
-        try
-        {
-            var content = _promptLoader.LoadPrompt(name, file);
-            return Ok(new { file, content });
-        }
-        catch (FileNotFoundException)
-        {
-            return NotFound();
-        }
-    }
+    public IActionResult GetPrompt(string name, string file) =>
+        Handle(() => Ok(new { file, content = _promptLoader.LoadPrompt(name, file) }));
 
     [HttpPost]
-    public IActionResult Create([FromBody] CreatePipelineRequest req)
-    {
-        if (string.IsNullOrWhiteSpace(req.Name) || req.Agents.Count == 0)
-            return BadRequest(new { error = "Name and at least one agent are required" });
+    public IActionResult Create([FromBody] CreatePipelineRequest req) =>
+        Handle(() =>
+        {
+            var (pipeline, prompts) = BuildPipeline(req.Name, req);
+            return Ok(_promptLoader.CreatePipeline(pipeline, prompts));
+        });
 
+    [HttpPut("{name}")]
+    public IActionResult Update(string name, [FromBody] CreatePipelineRequest req) =>
+        Handle(() =>
+        {
+            var (pipeline, prompts) = BuildPipeline(name, req);
+            return Ok(_promptLoader.UpdatePipeline(pipeline, prompts));
+        });
+
+    [HttpDelete("{name}")]
+    public IActionResult Delete(string name) =>
+        Handle(() =>
+        {
+            _promptLoader.DeletePipeline(name);
+            return Ok(new { deleted = true });
+        });
+
+    [HttpPut("{name}/prompts/{file}")]
+    public IActionResult SavePrompt(string name, string file, [FromBody] SavePromptRequest body) =>
+        Handle(() =>
+        {
+            _promptLoader.SavePrompt(name, file, body.Content);
+            return Ok(new { file, saved = true });
+        });
+
+    private IActionResult Handle(Func<IActionResult> action)
+    {
         try
         {
-            var pipeline = new PipelineInfo
-            {
-                Name = req.Name,
-                DisplayName = req.DisplayName,
-                Description = req.Description,
-                OutputType = req.OutputType,
-                MaxCorrectionLoops = req.MaxCorrectionLoops,
-                Agents = req.Agents.Select((a, i) =>
-                {
-                    var role = string.IsNullOrWhiteSpace(a.Role) ? Slugify(a.Name) : a.Role;
-                    return new AgentInfo
-                    {
-                        Role = role,
-                        Name = a.Name,
-                        Description = a.Description,
-                        Step = i + 1,
-                        PromptFile = $"{role}.md",
-                        OutputBehavior = a.OutputBehavior,
-                        InputSource = a.InputSource,
-                        CorrectionTarget = a.CorrectionTarget
-                    };
-                }).ToList()
-            };
-
-            var prompts = pipeline.Agents.ToDictionary(
-                a => a.PromptFile,
-                a => req.Agents.ElementAt(a.Step - 1).Prompt
-            );
-
-            return Ok(_promptLoader.CreatePipeline(pipeline, prompts));
+            return action();
+        }
+        catch (FileNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
@@ -91,14 +80,30 @@ public class PipelinesController : ControllerBase
         }
     }
 
-    [HttpPut("{name}")]
-    public IActionResult Update(string name, [FromBody] CreatePipelineRequest req)
+    private static (PipelineInfo Pipeline, Dictionary<string, string> Prompts) BuildPipeline(
+        string name, CreatePipelineRequest req)
     {
-        try { _promptLoader.GetPipeline(name); }
-        catch (FileNotFoundException) { return NotFound(new { error = $"Pipeline '{name}' not found" }); }
-
         if (req.Agents.Count == 0)
-            return BadRequest(new { error = "At least one agent is required" });
+            throw new ArgumentException("At least one agent is required");
+
+        var agents = req.Agents.Select((a, i) =>
+        {
+            var role = string.IsNullOrWhiteSpace(a.Role) ? Slugify(a.Name) : a.Role;
+            return new AgentInfo
+            {
+                Role = role,
+                Name = a.Name,
+                Description = a.Description,
+                Step = i + 1,
+                PromptFile = $"{role}.md",
+                OutputBehavior = a.OutputBehavior,
+                InputSource = a.InputSource,
+                CorrectionTarget = a.CorrectionTarget
+            };
+        }).ToList();
+
+        if (agents.Select(a => a.Role).Distinct().Count() != agents.Count)
+            throw new ArgumentException("Each agent needs a different name");
 
         var pipeline = new PipelineInfo
         {
@@ -107,63 +112,18 @@ public class PipelinesController : ControllerBase
             Description = req.Description,
             OutputType = req.OutputType,
             MaxCorrectionLoops = req.MaxCorrectionLoops,
-            Agents = req.Agents.Select((a, i) =>
-            {
-                var role = string.IsNullOrWhiteSpace(a.Role) ? Slugify(a.Name) : a.Role;
-                return new AgentInfo
-                {
-                    Role = role,
-                    Name = a.Name,
-                    Description = a.Description,
-                    Step = i + 1,
-                    PromptFile = $"{role}.md",
-                    OutputBehavior = a.OutputBehavior,
-                    InputSource = a.InputSource,
-                    CorrectionTarget = a.CorrectionTarget
-                };
-            }).ToList()
+            Agents = agents
         };
 
-        var prompts = pipeline.Agents.ToDictionary(
-            a => a.PromptFile,
-            a => req.Agents.ElementAt(a.Step - 1).Prompt
-        );
+        var prompts = agents
+            .Zip(req.Agents, (info, request) => (info.PromptFile, request.Prompt))
+            .ToDictionary(pair => pair.PromptFile, pair => pair.Prompt);
 
-        return Ok(_promptLoader.UpdatePipeline(pipeline, prompts));
-    }
-
-    [HttpDelete("{name}")]
-    public IActionResult Delete(string name)
-    {
-        try
-        {
-            _promptLoader.DeletePipeline(name);
-            return Ok(new { deleted = true });
-        }
-        catch (FileNotFoundException)
-        {
-            return NotFound(new { error = $"Pipeline '{name}' not found" });
-        }
-    }
-
-    [HttpPut("{name}/prompts/{file}")]
-    public IActionResult SavePrompt(string name, string file, [FromBody] SavePromptRequest body)
-    {
-        try
-        {
-            _promptLoader.SavePrompt(name, file, body.Content);
-            return Ok(new { file, saved = true });
-        }
-        catch (FileNotFoundException)
-        {
-            return NotFound();
-        }
+        return (pipeline, prompts);
     }
 
     private static string Slugify(string name) =>
-        System.Text.RegularExpressions.Regex
-            .Replace(name.ToLowerInvariant(), @"[^a-z0-9]+", "-")
-            .Trim('-');
+        Regex.Replace(name.ToLowerInvariant(), "[^a-z0-9]+", "-").Trim('-');
 }
 
 public class CreatePipelineRequest
@@ -213,5 +173,6 @@ public class CreateAgentRequest
 
 public class SavePromptRequest
 {
+    [JsonPropertyName("content")]
     public string Content { get; set; } = "";
 }

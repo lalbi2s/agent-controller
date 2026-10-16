@@ -4,16 +4,6 @@ using AgentController.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.Limits.MaxRequestBodySize = 500 * 1024 * 1024;
-});
-
-builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
-{
-    options.MultipartBodyLengthLimit = 500 * 1024 * 1024;
-});
-
 builder.Services.AddControllers();
 
 builder.Services.AddHttpClient<AnthropicClient>();
@@ -30,7 +20,9 @@ builder.Services.AddSingleton(sp =>
     return new LLMClientFactory(clients, logger);
 });
 
-builder.Services.AddSingleton<PromptLoader>();
+builder.Services.AddSingleton(sp => new PromptLoader(
+    Path.Combine(builder.Environment.ContentRootPath, "pipelines"),
+    sp.GetRequiredService<ILogger<PromptLoader>>()));
 builder.Services.AddSingleton<AgentFactory>();
 builder.Services.AddTransient<Orchestrator>();
 builder.Services.AddSingleton<BreakpointService>();

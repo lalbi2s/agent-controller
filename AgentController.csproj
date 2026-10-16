@@ -8,9 +8,4 @@
     <UserSecretsId>agent-controller-local</UserSecretsId>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Content Include="pipelines/**/*.md" CopyToOutputDirectory="PreserveNewest" />
-    <Content Update="pipelines/**/*.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
 </Project>

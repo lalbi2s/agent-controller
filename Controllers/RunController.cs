@@ -10,6 +10,8 @@ namespace AgentController.Controllers;
 [Route("api/[controller]")]
 public class RunController : ControllerBase
 {
+    private const int MaxUploadBytes = 10 * 1024 * 1024;
+
     private readonly Orchestrator _orchestrator;
     private readonly PromptLoader _promptLoader;
     private readonly BreakpointService _breakpointService;
@@ -28,7 +30,7 @@ public class RunController : ControllerBase
     }
 
     [HttpPost]
-    [RequestSizeLimit(500 * 1024 * 1024)]
+    [RequestSizeLimit(MaxUploadBytes)]
     public async Task Post(
         List<IFormFile> files,
         [FromForm] string pipeline,
