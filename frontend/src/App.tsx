@@ -40,41 +40,20 @@ export default function App() {
 
   const savedState = loadSavedState()
 
-  const [files, setFiles] = useState<File[]>(() => {
-    try {
-      const savedFiles = localStorage.getItem('savedFilesState')
-      if (savedFiles) {
-        const parsed = JSON.parse(savedFiles) as Array<{ name: string; content: string }>
-        return parsed.map(f => new File([f.content], f.name))
-      }
-    } catch { /* ignore */ }
-    return []
-  })
-
-  useEffect(() => {
-    if (files.length > 0) {
-      Promise.all(files.map(async f => ({ name: f.name, content: await f.text() })))
-        .then(data => localStorage.setItem('savedFilesState', JSON.stringify(data)))
-    } else {
-      localStorage.removeItem('savedFilesState')
-    }
-  }, [files])
+  const [files, setFiles] = useState<File[]>([])
 
   const [selectedPipelineName, setSelectedPipelineName] = useState<string | null>(() => savedState?.selectedPipelineName || null)
   const [selectedPipeline, setSelectedPipeline] = useState<PipelineInfo | null>(null)
   const [agentConfigs, setAgentConfigs] = useState<Record<string, AgentConfig>>(() => savedState?.agentConfigs || {})
   const [history, setHistory] = useState<HistoryEntry[]>(() => savedState?.history || [])
-  const [result, setResult] = useState<CompletionData | null>(() => savedState?.result || null)
-  const [logs, setLogs] = useState<LogEntry[]>(() => savedState?.logs || [])
-  const [metrics, setMetrics] = useState<Metric[]>(() => savedState?.metrics || [])
-  const [agentStatuses, setAgentStatuses] = useState<Record<string, string>>(() => savedState?.agentStatuses || {})
-  const [agentTimings, setAgentTimings] = useState<Record<string, { startMs: number; endMs?: number }>>(() => savedState?.agentTimings || {})
+  const [result, setResult] = useState<CompletionData | null>(null)
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [metrics, setMetrics] = useState<Metric[]>([])
+  const [agentStatuses, setAgentStatuses] = useState<Record<string, string>>({})
+  const [agentTimings, setAgentTimings] = useState<Record<string, { startMs: number; endMs?: number }>>({})
   const [rightTab, setRightTab] = useState<'json' | 'structure' | 'agent'>(() => savedState?.rightTab || 'json')
 
-  const [appState, setAppState] = useState<AppState>(() => {
-    const s = savedState?.appState
-    return (s && s !== 'running' && s !== 'paused') ? s : 'idle'
-  })
+  const [appState, setAppState] = useState<AppState>('idle')
 
   const [breakpoints, setBreakpoints] = useState<Record<string, boolean>>(() => savedState?.breakpoints || {})
   const [pausedRunId, setPausedRunId] = useState<string | null>(null)
@@ -98,15 +77,14 @@ export default function App() {
     agentLogs[l.agent].push(l)
   })
 
+  // Only the settings are kept between visits: never files, results or logs
   useEffect(() => {
     try {
       localStorage.setItem('agentControllerState', JSON.stringify({
-        selectedPipelineName, agentConfigs, history, result, logs, metrics,
-        appState: (appState === 'running' || appState === 'paused') ? 'idle' : appState,
-        agentStatuses, agentTimings, rightTab, breakpoints
+        selectedPipelineName, agentConfigs, history, rightTab, breakpoints
       }))
-    } catch { /* ignore */ }
-  }, [selectedPipelineName, agentConfigs, history, result, logs, metrics, appState, agentStatuses, agentTimings, rightTab, breakpoints])
+    } catch { /* storage unavailable */ }
+  }, [selectedPipelineName, agentConfigs, history, rightTab, breakpoints])
 
   const outputType: OutputType = selectedPipeline?.outputType ?? 'text'
 

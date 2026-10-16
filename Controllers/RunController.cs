@@ -39,7 +39,6 @@ public class RunController : ControllerBase
     {
         Response.ContentType = "text/event-stream";
         Response.Headers.CacheControl = "no-cache";
-        Response.Headers.Connection = "keep-alive";
 
         var runId = _breakpointService.CreateRun();
 
