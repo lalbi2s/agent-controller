@@ -13,7 +13,13 @@ public class PipelinesControllerTests : IDisposable
     private static CreatePipelineRequest Request(string name, params (string Name, string Type)[] agents) => new()
     {
         Name = name,
-        Agents = agents.Select(a => new CreateAgentRequest { Name = a.Name, Type = a.Type, Prompt = "p" }).ToList()
+        Agents = agents.Select(a => new CreateAgentRequest
+        {
+            Name = a.Name,
+            Type = a.Type,
+            Prompt = "p",
+            Checker = a.Type == "check" ? "grafana-prometheus-dashboard" : null
+        }).ToList()
     };
 
     [Fact]
@@ -35,6 +41,30 @@ public class PipelinesControllerTests : IDisposable
         var result = controller.Create(Request("my-pipeline", ("Extractor", "enrich")));
 
         Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public void A_check_agent_has_a_checker_and_no_prompt_file()
+    {
+        var controller = new PipelinesController(_workspace.PromptLoader);
+
+        controller.Create(Request("my-pipeline", ("Writer", "generate"), ("Validator", "check")));
+
+        var check = _workspace.PromptLoader.GetPipeline("my-pipeline").Agents[1];
+        Assert.Equal("check", check.Type);
+        Assert.Equal("grafana-prometheus-dashboard", check.Checker);
+        Assert.Equal("", check.PromptFile);
+        Assert.Throws<FileNotFoundException>(() => _workspace.PromptLoader.LoadPrompt("my-pipeline", "validator.md"));
+    }
+
+    [Fact]
+    public void A_check_agent_with_an_unknown_checker_is_a_bad_request()
+    {
+        var controller = new PipelinesController(_workspace.PromptLoader);
+        var request = Request("my-pipeline", ("Validator", "check"));
+        request.Agents[0].Checker = "does-not-exist";
+
+        Assert.IsType<BadRequestObjectResult>(controller.Create(request));
     }
 
     [Fact]

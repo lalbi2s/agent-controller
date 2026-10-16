@@ -101,16 +101,90 @@ public class OrchestratorTests : IDisposable
     }
 
     [Fact]
-    public async Task Review_and_validate_agents_do_not_replace_the_main_output()
+    public async Task Review_and_check_agents_do_not_replace_the_main_output()
     {
-        var llm = new FakeLLMClient().Reply("""{"dashboard":true}""", CleanReview, """{"valid":true,"errors":[]}""");
-        var pipeline = _workspace.CreatePipeline("json", 2, ("a", "generate"), ("r", "review"), ("v", "validate"));
+        var llm = new FakeLLMClient().Reply(Fixtures.ValidDashboard, CleanReview);
+        var pipeline = _workspace.CreatePipeline("json", 2, ("a", "generate"), ("v", "check"), ("r", "review"));
 
         var events = await Run.PipelineAsync(_workspace.CreateOrchestrator(llm), pipeline);
 
-        Assert.Contains("""{"dashboard":true}""", llm.Calls[2].UserMessage);
-        Assert.DoesNotContain("issues", llm.Calls[2].UserMessage);
-        Assert.Equal("""{"dashboard":true}""", FinalOutput(events));
+        Assert.Equal(2, llm.Calls.Count);
+        Assert.Contains("\"uid\"", llm.Calls[1].UserMessage);
+        Assert.DoesNotContain("issues", llm.Calls[1].UserMessage);
+        Assert.Equal(Fixtures.ValidDashboard, FinalOutput(events));
+    }
+
+    [Fact]
+    public async Task A_check_that_passes_calls_no_LLM_and_starts_no_correction()
+    {
+        var llm = new FakeLLMClient().Reply(Fixtures.ValidDashboard);
+        var pipeline = _workspace.CreatePipeline("json", 2, ("a", "generate"), ("v", "check"));
+
+        var events = await Run.PipelineAsync(_workspace.CreateOrchestrator(llm), pipeline);
+
+        Assert.Single(llm.Calls);
+        Assert.DoesNotContain(events, e => e.Type == PipelineEventType.CorrectionLoop);
+        Assert.Contains(events, e => e.Type == PipelineEventType.Review && e.Message == "No problem found");
+    }
+
+    [Fact]
+    public async Task A_failed_check_sends_its_errors_back_to_the_generate_agent()
+    {
+        var invalid = Fixtures.ValidDashboard.Replace("\"uid\": \"k6-test\",", "");
+        var llm = new FakeLLMClient().Reply(invalid, Fixtures.ValidDashboard);
+        var pipeline = _workspace.CreatePipeline("json", 2, ("a", "generate"), ("v", "check"));
+
+        var events = await Run.PipelineAsync(_workspace.CreateOrchestrator(llm), pipeline);
+
+        Assert.Equal(2, llm.Calls.Count);
+        Assert.Equal("prompt of a", llm.Calls[1].SystemPrompt);
+        Assert.Contains("--- ERRORS TO FIX ---\n- Dashboard: field 'uid' is missing or empty", llm.Calls[1].UserMessage);
+        Assert.Contains(invalid, llm.Calls[1].UserMessage);
+        Assert.Single(events, e => e.Type == PipelineEventType.CorrectionLoop);
+        Assert.Equal(Fixtures.ValidDashboard, FinalOutput(events));
+    }
+
+    [Fact]
+    public async Task A_check_stops_correcting_at_the_maximum_and_warns()
+    {
+        var invalid = "not json";
+        var llm = new FakeLLMClient().Reply(invalid, invalid, invalid, invalid);
+        var pipeline = _workspace.CreatePipeline("json", 1, ("a", "generate"), ("v", "check"));
+
+        var events = await Run.PipelineAsync(_workspace.CreateOrchestrator(llm), pipeline);
+
+        Assert.Equal(4, llm.Calls.Count); // each generate call is repeated once because the answer is not JSON
+        Assert.Single(events, e => e.Type == PipelineEventType.CorrectionLoop);
+        Assert.Contains(events, e => e.Type == PipelineEventType.AgentLog && e.Message!.Contains("remain after 1 correction"));
+        Assert.Equal(invalid, FinalOutput(events));
+    }
+
+    [Fact]
+    public async Task A_check_and_a_review_share_the_same_correction_limit()
+    {
+        var invalid = Fixtures.ValidDashboard.Replace("\"title\": \"k6 test\",", "");
+        var llm = new FakeLLMClient().Reply(invalid, Fixtures.ValidDashboard, ErrorReview);
+        var pipeline = _workspace.CreatePipeline("json", 1, ("a", "generate"), ("v", "check"), ("r", "review"));
+
+        var events = await Run.PipelineAsync(_workspace.CreateOrchestrator(llm), pipeline);
+
+        Assert.Equal(3, llm.Calls.Count);
+        Assert.Single(events, e => e.Type == PipelineEventType.CorrectionLoop);
+        Assert.Equal(Fixtures.ValidDashboard, FinalOutput(events));
+    }
+
+    [Fact]
+    public async Task A_review_after_a_check_sends_the_run_back_to_the_generate_agent_not_the_check()
+    {
+        var llm = new FakeLLMClient().Reply(Fixtures.ValidDashboard, ErrorReview, Fixtures.ValidDashboard, CleanReview);
+        var pipeline = _workspace.CreatePipeline("json", 2, ("a", "generate"), ("v", "check"), ("r", "review"));
+
+        var events = await Run.PipelineAsync(_workspace.CreateOrchestrator(llm), pipeline);
+
+        Assert.Equal(4, llm.Calls.Count);
+        Assert.Equal("prompt of a", llm.Calls[2].SystemPrompt);
+        Assert.Contains("- fix x", llm.Calls[2].UserMessage);
+        Assert.Equal(2, events.Count(e => e.Type == PipelineEventType.Review && e.Agent == "v"));
     }
 
     [Fact]

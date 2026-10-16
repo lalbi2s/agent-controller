@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus, Trash2, Save, ChevronUp, ChevronDown } from 'lucide-react'
 import { AGENT_TYPES, type AgentType } from '../types'
+import { useCheckers } from '../hooks/useApi'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter,
 } from '@/components/ui/dialog'
@@ -15,6 +16,7 @@ interface AgentDraft {
   description: string
   prompt: string
   type: AgentType
+  checker: string
 }
 
 interface Props {
@@ -39,6 +41,7 @@ export function PipelineCreator({ onClose, onCreated }: Props) {
   const [description, setDescription] = useState('')
   const [outputType, setOutputType] = useState('text')
   const [agents, setAgents] = useState<AgentDraft[]>([])
+  const checkers = useCheckers()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -51,6 +54,7 @@ export function PipelineCreator({ onClose, onCreated }: Props) {
       description: '',
       prompt: '',
       type: 'generate',
+      checker: checkers[0] ?? '',
     }])
   }
 
@@ -104,6 +108,7 @@ export function PipelineCreator({ onClose, onCreated }: Props) {
             description: a.description.trim(),
             prompt: a.prompt || `# ${a.name}\n\nPrompt for agent ${a.name}.`,
             type: a.type,
+            checker: a.type === 'check' ? (a.checker || checkers[0]) : undefined,
           }))
         })
       })
@@ -219,13 +224,21 @@ export function PipelineCreator({ onClose, onCreated }: Props) {
                   </select>
                 </div>
 
-                <Textarea
-                  value={agent.prompt}
-                  onChange={e => updateAgent(agent.id, { prompt: e.target.value })}
-                  placeholder="Agent prompt (markdown)..."
-                  rows={3}
-                  className="mt-1"
-                />
+                {agent.type === 'check' ? (
+                  <div className="select-wrap mt-1">
+                    <select value={agent.checker || checkers[0] || ''} onChange={e => updateAgent(agent.id, { checker: e.target.value })}>
+                      {checkers.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <Textarea
+                    value={agent.prompt}
+                    onChange={e => updateAgent(agent.id, { prompt: e.target.value })}
+                    placeholder="Agent prompt (markdown)..."
+                    rows={3}
+                    className="mt-1"
+                  />
+                )}
               </div>
             ))}
 

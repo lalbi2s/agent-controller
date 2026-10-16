@@ -1,6 +1,6 @@
 # Agent Controller
 
-A small web app that runs a chain of LLM agents on a file. The included pipeline reads a k6 load test script and produces a Grafana dashboard for its metrics: one agent extracts the metrics, one designs the dashboard, one reviews it and sends it back for correction if needed, and one checks that the JSON can be imported into Grafana.
+A small web app that runs a chain of LLM agents on a file. The included pipeline reads a k6 load test script and produces a Grafana dashboard for its metrics: one agent extracts the metrics, one designs the dashboard, a check written in C# verifies that the JSON can be imported into Grafana, and one agent reviews the result. Both the check and the review send the dashboard back for correction when they find errors.
 
 Pipelines are plain files (a `pipeline.json` and one markdown prompt per agent), so the same engine can run other chains. It works with Anthropic and with any server that implements the OpenAI chat completions API.
 
@@ -32,10 +32,11 @@ The default pipeline:
 flowchart LR
     F[k6 script] --> E["Extractor (generate)"]
     E --> A["Architect (generate)"]
-    A --> R["Reviewer (review)"]
-    R -- "errors, up to maxCorrectionLoops" --> A
-    R --> V["Validator (validate)"]
-    V --> D[Dashboard JSON]
+    A --> V["Validator (check, C# code, no LLM)"]
+    V -- "errors, up to maxCorrectionLoops" --> A
+    V --> R["Reviewer (review)"]
+    R -- "errors, same limit" --> A
+    R --> D[Dashboard JSON]
 ```
 
 How a run works:
@@ -44,7 +45,7 @@ How a run works:
 - The `type` of each agent in `pipeline.json` decides what its answer means, never the shape of the answer:
   - `generate`: the answer becomes the main output.
   - `review`: the answer must be `{ "issues": [...], "suggestions": [...] }`. If an issue has the severity `error`, the run goes back to the closest `generate` agent before the reviewer, with the errors added to its input. This happens at most `maxCorrectionLoops` times.
-  - `validate`: the answer is shown in the logs and the main output is not changed.
+  - `check`: no LLM and no prompt. A check written in C# (named by the `checker` field) examines the main output. Its problems are handled exactly like the errors of a review: same correction, same limit, and the limit is shared with the reviewer. If problems remain after the last correction, the run goes on and a warning is logged.
 - If a provider has no key, or rejects the key (HTTP 401, 403 or 413), the agent uses the other provider with that provider's default model.
 - Raw files larger than the provider limit are split into overlapping chunks for the first agent.
 - You can set a breakpoint before an agent to pause the run, edit its prompt and continue.
@@ -96,7 +97,7 @@ The encryption keys are created by Data Protection in your user profile (`~/.asp
 
 1. Start the app and select the pipeline **Grafana k6 Dashboard**.
 2. Drop `samples/quickpizza-load-test.js` in the upload area. It is a k6 test against the public QuickPizza demo, with three custom metrics declared in `thresholds`.
-3. Click Generate. The log shows each agent, the metrics found, the review and any correction loop.
+3. Click Generate. The log shows each agent, the metrics found, the result of the check and of the review, and any correction loop.
 4. Download the JSON and import it in Grafana (Dashboards, New, Import).
 
 The dashboard assumes k6 sends its metrics to Prometheus with the remote write output, with these settings:
@@ -121,12 +122,13 @@ Each pipeline is a folder in `pipelines/` with a `pipeline.json` and one prompt 
   "maxCorrectionLoops": 2,
   "agents": [
     { "role": "writer", "name": "Writer", "step": 1, "promptFile": "writer.md", "type": "generate" },
-    { "role": "checker", "name": "Checker", "step": 2, "promptFile": "checker.md", "type": "review" }
+    { "role": "validator", "name": "Validator", "step": 2, "promptFile": "", "type": "check", "checker": "grafana-prometheus-dashboard" },
+    { "role": "critic", "name": "Critic", "step": 3, "promptFile": "critic.md", "type": "review" }
   ]
 }
 ```
 
-Names use lowercase letters, digits and hyphens. The output type can be `text`, `json`, `html`, `csv` or `markdown`.
+Names use lowercase letters, digits and hyphens. The output type can be `text`, `json`, `html`, `csv` or `markdown`. The only checker available is `grafana-prometheus-dashboard`; it verifies valid JSON, the required fields (`uid`, `title`, `schemaVersion`, `panels`), positive unique panel ids, a `gridPos` inside the 24 column grid, a query on every target, datasource variables that are defined, and no `TODO`, `FIXME`, `XXX` or `{{PLACEHOLDER}}` left in the text. To add a checker, write a function that returns a list of problems and register it in `Services/Checkers.cs`.
 
 ## Tests
 
@@ -134,7 +136,7 @@ Names use lowercase letters, digits and hyphens. The output type can be `text`, 
 dotnet test
 ```
 
-The tests use a fake LLM client and a fake HTTP handler, so they need no network and no API key. They cover the orchestrator (chaining, review and correction loops, agent types, skipped agents, errors, chunking), the agent (JSON extraction, retry, provider fallback), pipeline file safety, and the API keys (the key is never returned, deletion works, the file is encrypted, errors never contain the key).
+The tests use a fake LLM client and a fake HTTP handler, so they need no network and no API key. They cover the orchestrator (chaining, review and check correction loops, agent types, skipped agents, errors, chunking), the dashboard check (including the example dashboard written in the architect prompt), the agent (JSON extraction, retry, provider fallback), pipeline file safety, and the API keys (the key is never returned, deletion works, the file is encrypted, errors never contain the key).
 
 ## Limits and ideas
 

@@ -31,6 +31,19 @@ export function useModels() {
   return models
 }
 
+export function useCheckers() {
+  const [checkers, setCheckers] = useState<string[]>([])
+
+  useEffect(() => {
+    fetch('/api/checkers')
+      .then(r => r.json())
+      .then(setCheckers)
+      .catch(console.error)
+  }, [])
+
+  return checkers
+}
+
 export function useAgentDefaults() {
   const [defaults, setDefaults] = useState<Record<string, { provider: string; model: string }>>({})
 

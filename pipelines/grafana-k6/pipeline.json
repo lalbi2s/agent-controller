@@ -21,20 +21,21 @@
       "type": "generate"
     },
     {
+      "role": "validator",
+      "name": "Validator",
+      "description": "Checks in code that the dashboard JSON can be imported into Grafana",
+      "step": 3,
+      "promptFile": "",
+      "type": "check",
+      "checker": "grafana-prometheus-dashboard"
+    },
+    {
       "role": "reviewer",
       "name": "Reviewer",
       "description": "Reviews PromQL, layout, units and design",
-      "step": 3,
+      "step": 4,
       "promptFile": "reviewer.md",
       "type": "review"
-    },
-    {
-      "role": "validator",
-      "name": "Validator",
-      "description": "Checks that the dashboard JSON can be imported into Grafana",
-      "step": 4,
-      "promptFile": "validator.md",
-      "type": "validate"
     }
   ],
   "maxCorrectionLoops": 2

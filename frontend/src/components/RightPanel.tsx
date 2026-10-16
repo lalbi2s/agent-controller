@@ -183,6 +183,11 @@ export function RightPanel({
     if (!agentInfo) return
 
     const promptFile = agentInfo.promptFile
+    if (!promptFile) {
+      setPromptContent(null)
+      setPromptOriginal(null)
+      return
+    }
     setPromptLoading(true)
     setPromptSaved(false)
     fetch(`/api/pipelines/${selectedPipeline.name}/prompts/${promptFile}`)
@@ -337,7 +342,9 @@ export function RightPanel({
                     spellCheck={false}
                   />
                 ) : (
-                  <div className="prompt-editor-loading">Prompt not available</div>
+                  <div className="prompt-editor-loading">
+                    {selectedAgentInfo.type === 'check' ? 'This agent runs a built-in check, it has no prompt' : 'Prompt not available'}
+                  </div>
                 )}
               </div>
 

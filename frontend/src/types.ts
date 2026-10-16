@@ -1,9 +1,9 @@
-export type AgentType = 'generate' | 'review' | 'validate'
+export type AgentType = 'generate' | 'review' | 'check'
 
 export const AGENT_TYPES: { value: AgentType; label: string }[] = [
   { value: 'generate', label: 'Generate (produces the result)' },
   { value: 'review', label: 'Review (checks the result, can send it back)' },
-  { value: 'validate', label: 'Validate (checks the result)' },
+  { value: 'check', label: 'Check (built-in validation in code, no prompt)' },
 ]
 
 export interface AgentInfo {
@@ -13,6 +13,7 @@ export interface AgentInfo {
   step: number
   promptFile: string
   type: AgentType
+  checker?: string
 }
 
 export interface PipelineInfo {

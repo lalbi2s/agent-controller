@@ -29,7 +29,7 @@ public sealed class TestWorkspace : IDisposable
             NullLogger<Orchestrator>.Instance);
     }
 
-    /// <summary>Creates a pipeline named "test". Each agent is (role, type), its prompt is "prompt of {role}".</summary>
+    /// <summary>Creates a pipeline named "test". Each agent is (role, type), its prompt is "prompt of {role}". A check has no prompt.</summary>
     public PipelineInfo CreatePipeline(string outputType, int maxCorrectionLoops, params (string Role, string Type)[] agents)
     {
         var pipeline = new PipelineInfo
@@ -42,11 +42,14 @@ public sealed class TestWorkspace : IDisposable
                 Role = a.Role,
                 Name = a.Role,
                 Step = i + 1,
-                PromptFile = $"{a.Role}.md",
-                Type = a.Type
+                PromptFile = a.Type == AgentTypes.Check ? "" : $"{a.Role}.md",
+                Type = a.Type,
+                Checker = a.Type == AgentTypes.Check ? Checkers.GrafanaPrometheusDashboard : null
             }).ToList()
         };
-        var prompts = agents.ToDictionary(a => $"{a.Role}.md", a => $"prompt of {a.Role}");
+        var prompts = agents
+            .Where(a => a.Type != AgentTypes.Check)
+            .ToDictionary(a => $"{a.Role}.md", a => $"prompt of {a.Role}");
 
         return PromptLoader.CreatePipeline(pipeline, prompts);
     }

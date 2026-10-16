@@ -27,9 +27,9 @@ public static class AgentTypes
 {
     public const string Generate = "generate";
     public const string Review = "review";
-    public const string Validate = "validate";
+    public const string Check = "check";
 
-    public static bool IsValid(string type) => type is Generate or Review or Validate;
+    public static bool IsValid(string? type) => type is Generate or Review or Check;
 }
 
 public class AgentInfo
@@ -51,6 +51,11 @@ public class AgentInfo
 
     [JsonPropertyName("type")]
     public string Type { get; set; } = AgentTypes.Generate;
+
+    // Only for the agents of type "check": the name of the check run in code, see Checkers
+    [JsonPropertyName("checker")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Checker { get; set; }
 }
 
 public class AgentConfig

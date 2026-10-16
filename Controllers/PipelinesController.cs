@@ -20,6 +20,9 @@ public class PipelinesController : ControllerBase
     [HttpGet]
     public IActionResult GetAll() => Ok(_promptLoader.GetPipelines());
 
+    [HttpGet("/api/checkers")]
+    public IActionResult GetCheckers() => Ok(Checkers.Names);
+
     [HttpGet("{name}")]
     public IActionResult Get(string name) =>
         Handle(() => Ok(_promptLoader.GetPipeline(name)));
@@ -89,20 +92,26 @@ public class PipelinesController : ControllerBase
         var agents = req.Agents.Select((a, i) =>
         {
             var role = string.IsNullOrWhiteSpace(a.Role) ? Slugify(a.Name) : a.Role;
+            var isCheck = a.Type == AgentTypes.Check;
             return new AgentInfo
             {
                 Role = role,
                 Name = a.Name,
                 Description = a.Description,
                 Step = i + 1,
-                PromptFile = $"{role}.md",
-                Type = a.Type
+                PromptFile = isCheck ? "" : $"{role}.md",
+                Type = a.Type,
+                Checker = isCheck ? a.Checker : null
             };
         }).ToList();
 
         var unknownType = agents.FirstOrDefault(a => !AgentTypes.IsValid(a.Type));
         if (unknownType is not null)
-            throw new ArgumentException($"Unknown agent type '{unknownType.Type}'. Use generate, review or validate.");
+            throw new ArgumentException($"Unknown agent type '{unknownType.Type}'. Use generate, review or check.");
+
+        var unknownChecker = agents.FirstOrDefault(a => a.Type == AgentTypes.Check && !Checkers.Exists(a.Checker));
+        if (unknownChecker is not null)
+            throw new ArgumentException($"Agent '{unknownChecker.Name}' needs a known checker. Available: {string.Join(", ", Checkers.Names)}");
 
         if (agents.Select(a => a.Role).Distinct().Count() != agents.Count)
             throw new ArgumentException("Each agent needs a different name");
@@ -119,6 +128,7 @@ public class PipelinesController : ControllerBase
 
         var prompts = agents
             .Zip(req.Agents, (info, request) => (info.PromptFile, request.Prompt))
+            .Where(pair => pair.PromptFile != "")
             .ToDictionary(pair => pair.PromptFile, pair => pair.Prompt);
 
         return (pipeline, prompts);
@@ -165,6 +175,9 @@ public class CreateAgentRequest
 
     [JsonPropertyName("type")]
     public string Type { get; set; } = AgentTypes.Generate;
+
+    [JsonPropertyName("checker")]
+    public string? Checker { get; set; }
 }
 
 public class SavePromptRequest

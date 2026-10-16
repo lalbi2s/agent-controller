@@ -275,7 +275,7 @@ export function Sidebar({
                 </div>
               </div>
 
-              {config.enabled && (
+              {config.enabled && agent.type !== "check" && (
                 <div className="agent-card-controls" onClick={(e) => e.stopPropagation()}>
                   <div className="select-wrap">
                     <select

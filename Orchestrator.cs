@@ -53,21 +53,26 @@ public class Orchestrator
 
             await CheckBreakpointAsync(current, pipeline.Name, emit, runId, breakpoints, ct);
             ct.ThrowIfCancellationRequested();
-            await emit(MakeEvent(PipelineEventType.AgentStart, current.Agent.Name, info.Step,
-                $"Running {current.Agent.Name}..."));
+            await emit(MakeEvent(PipelineEventType.AgentStart, info.Name, info.Step, $"Running {info.Name}..."));
 
             var agentTime = Stopwatch.StartNew();
-            var isFirstRun = index == 0 && state.Corrections is null;
-            var input = BuildInput(isFirstRun, state, fileContent, testName);
-            var output = await RunAgentAsync(current, input, isFirstRun, pipeline.OutputType, emit, ct);
+            if (info.Type == AgentTypes.Check)
+            {
+                await RunCheckAsync(current, state, emit);
+            }
+            else
+            {
+                var isFirstRun = index == 0 && state.Corrections is null;
+                var input = BuildInput(isFirstRun, state, fileContent, testName);
+                var output = await RunAgentAsync(current, input, isFirstRun, pipeline.OutputType, emit, ct);
+                await ApplyOutputAsync(current, output, state, emit);
+            }
             agentTime.Stop();
             state.Corrections = null;
 
-            await ApplyOutputAsync(current, output, state, emit);
-
             state.AgentStats[info.Role] = new { status = "ok", durationMs = agentTime.ElapsedMilliseconds };
-            await emit(MakeEvent(PipelineEventType.AgentComplete, current.Agent.Name, info.Step,
-                $"{current.Agent.Name} completed in {agentTime.ElapsedMilliseconds}ms"));
+            await emit(MakeEvent(PipelineEventType.AgentComplete, info.Name, info.Step,
+                $"{info.Name} completed in {agentTime.ElapsedMilliseconds}ms"));
 
             var correctionTarget = await StartCorrectionAsync(agents, index, pipeline, state, emit);
             index = correctionTarget >= 0 ? correctionTarget : index + 1;
@@ -82,7 +87,12 @@ public class Orchestrator
         var unknown = pipeline.Agents.FirstOrDefault(a => !AgentTypes.IsValid(a.Type));
         if (unknown is not null)
             throw new InvalidOperationException(
-                $"Agent '{unknown.Name}' has an unknown type '{unknown.Type}'. Use generate, review or validate.");
+                $"Agent '{unknown.Name}' has an unknown type '{unknown.Type}'. Use generate, review or check.");
+
+        var unknownChecker = pipeline.Agents.FirstOrDefault(a => a.Type == AgentTypes.Check && !Checkers.Exists(a.Checker));
+        if (unknownChecker is not null)
+            throw new InvalidOperationException(
+                $"Agent '{unknownChecker.Name}' uses an unknown checker '{unknownChecker.Checker}'.");
     }
 
     private async Task<List<PlannedAgent>> PrepareAgentsAsync(
@@ -100,7 +110,9 @@ public class Orchestrator
                 continue;
             }
 
-            agents.Add(new PlannedAgent(_agentFactory.Create(pipeline.Name, info, config), config, info));
+            // A check runs in code: it has no prompt and no LLM
+            var agent = info.Type == AgentTypes.Check ? null : _agentFactory.Create(pipeline.Name, info, config);
+            agents.Add(new PlannedAgent(agent, config, info));
         }
 
         return agents;
@@ -129,7 +141,7 @@ public class Orchestrator
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            await emit(MakeEvent(PipelineEventType.AgentError, planned.Agent.Name, planned.Info.Step, ex.Message));
+            await emit(MakeEvent(PipelineEventType.AgentError, planned.Info.Name, planned.Info.Step, ex.Message));
             throw;
         }
     }
@@ -139,8 +151,8 @@ public class Orchestrator
         PlannedAgent planned, string input, bool splitLargeInput, string outputType,
         Func<PipelineEvent, Task> emit, CancellationToken ct)
     {
-        var agent = planned.Agent;
-        // Review and validate agents always answer with JSON, whatever the output type of the pipeline
+        var agent = planned.Agent!;
+        // A review agent always answers with JSON, whatever the output type of the pipeline
         bool expectJson = planned.Info.Type != AgentTypes.Generate || outputType == "json";
         int maxChars = agent.GetMaxInputChars();
 
@@ -172,24 +184,40 @@ public class Orchestrator
     private static async Task ApplyOutputAsync(
         PlannedAgent planned, string output, RunState state, Func<PipelineEvent, Task> emit)
     {
-        var (agent, _, info) = planned;
+        var info = planned.Info;
 
         switch (info.Type)
         {
             case AgentTypes.Generate:
                 state.MainOutput = output;
-                await ReadMetricsAsync(output, agent.Name, info.Step, state, emit);
+                await ReadMetricsAsync(output, info.Name, info.Step, state, emit);
                 break;
 
             case AgentTypes.Review:
-                await ReadReviewAsync(output, agent.Name, info.Step, state, emit);
-                break;
-
-            case AgentTypes.Validate:
-                await emit(MakeEvent(PipelineEventType.AgentLog, agent.Name, info.Step,
-                    $"{agent.Name} result: {Truncate(output, 2000)}"));
+                await ReadReviewAsync(output, info.Name, info.Step, state, emit);
                 break;
         }
+    }
+
+    // A check gives the same kind of result as a review, so the correction loop treats both the same way
+    private static async Task RunCheckAsync(PlannedAgent planned, RunState state, Func<PipelineEvent, Task> emit)
+    {
+        var info = planned.Info;
+        var problems = Checkers.Run(info.Checker!, state.MainOutput);
+
+        state.LastReview = new ReviewResult
+        {
+            Issues = problems.Select(p => new ReviewIssue { Severity = "error", Description = p }).ToList()
+        };
+
+        await emit(new PipelineEvent
+        {
+            Type = PipelineEventType.Review,
+            Agent = info.Name,
+            Step = info.Step,
+            Data = state.LastReview,
+            Message = problems.Count == 0 ? "No problem found" : $"{problems.Count} problems found"
+        });
     }
 
     // Shows the metrics list in the interface when a generate agent returns one. It never changes the routing.
@@ -252,14 +280,18 @@ public class Orchestrator
         List<PlannedAgent> agents, int index, PipelineInfo pipeline, RunState state, Func<PipelineEvent, Task> emit)
     {
         var info = agents[index].Info;
-        if (info.Type != AgentTypes.Review || state.LastReview is not { HasErrors: true } review)
-            return -1;
-        if (state.CorrectionLoops >= pipeline.MaxCorrectionLoops || index == 0)
+        if (info.Type is not (AgentTypes.Review or AgentTypes.Check) || state.LastReview is not { HasErrors: true } review)
             return -1;
 
-        int target = agents.FindLastIndex(index - 1, a => a.Info.Type == AgentTypes.Generate);
-        if (target < 0)
+        int target = index > 0 ? agents.FindLastIndex(index - 1, a => a.Info.Type == AgentTypes.Generate) : -1;
+        if (target < 0 || state.CorrectionLoops >= pipeline.MaxCorrectionLoops)
+        {
+            // The run goes on, but the errors of a check should not pass unnoticed
+            if (info.Type == AgentTypes.Check)
+                await emit(MakeEvent(PipelineEventType.AgentLog, info.Name, info.Step,
+                    $"{review.Errors.Count()} problems remain after {state.CorrectionLoops} correction(s)"));
             return -1;
+        }
 
         state.CorrectionLoops++;
         state.Corrections = string.Join("\n", review.Errors.Select(e => $"- {e.Description}"));
@@ -268,7 +300,7 @@ public class Orchestrator
         await emit(new PipelineEvent
         {
             Type = PipelineEventType.CorrectionLoop,
-            Agent = agents[index].Agent.Name,
+            Agent = info.Name,
             Step = info.Step,
             Message = $"Correction loop {state.CorrectionLoops}/{pipeline.MaxCorrectionLoops}",
             Data = new { iteration = state.CorrectionLoops, max = pipeline.MaxCorrectionLoops }
@@ -281,28 +313,31 @@ public class Orchestrator
         PlannedAgent planned, string pipelineName, Func<PipelineEvent, Task> emit,
         string? runId, HashSet<string>? breakpoints, CancellationToken ct)
     {
-        var (agent, _, info) = planned;
+        var info = planned.Info;
         if (breakpoints is null || runId is null || !breakpoints.Contains(info.Role))
             return;
 
-        _logger.LogInformation("Breakpoint before agent {Agent}", agent.Name);
+        _logger.LogInformation("Breakpoint before agent {Agent}", info.Name);
 
         // Register the pause before telling the interface, so a fast "Continue" cannot be missed
         var resumed = _breakpointService.WaitForResumeAsync(runId, ct);
         await emit(new PipelineEvent
         {
             Type = PipelineEventType.Breakpoint,
-            Agent = agent.Name,
+            Agent = info.Name,
             Step = info.Step,
-            Message = $"Breakpoint before {agent.Name}, waiting for resume",
+            Message = $"Breakpoint before {info.Name}, waiting for resume",
             Data = new { runId, role = info.Role }
         });
         await resumed;
 
         // The prompt may have been edited while the run was paused
+        if (planned.Agent is null)
+            return;
+
         try
         {
-            agent.SetSystemPrompt(_promptLoader.LoadPrompt(pipelineName, info.PromptFile));
+            planned.Agent.SetSystemPrompt(_promptLoader.LoadPrompt(pipelineName, info.PromptFile));
         }
         catch (FileNotFoundException)
         {
@@ -332,10 +367,7 @@ public class Orchestrator
     private static PipelineEvent MakeEvent(PipelineEventType type, string agent, int step, string message) =>
         new() { Type = type, Agent = agent, Step = step, Message = message };
 
-    private static string Truncate(string text, int maxLength) =>
-        text.Length <= maxLength ? text : text[..maxLength] + "...";
-
-    private record PlannedAgent(Agent Agent, AgentConfig Config, AgentInfo Info);
+    private record PlannedAgent(Agent? Agent, AgentConfig Config, AgentInfo Info);
 
     private class RunState(string mainOutput)
     {
