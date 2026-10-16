@@ -307,7 +307,7 @@ export default function App() {
               if (evt.agent) setAgentStatuses(prev => ({ ...prev, [evt.agent!]: 'paused' }))
             }
 
-            if (evt.type === 'Metrics' && evt.data) setMetrics(evt.data as Metric[])
+            if (evt.type === 'Metrics' && evt.data) setMetrics((evt.data as { metrics: Metric[] }).metrics)
             if (evt.type === 'Review' && evt.data) setReview(evt.data as ReviewResult)
 
             if (evt.message) {

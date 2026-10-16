@@ -6,6 +6,7 @@ namespace AgentController.Models;
 public enum PipelineEventType
 {
     AgentStart,
+    AgentLog,
     AgentComplete,
     AgentSkip,
     AgentError,

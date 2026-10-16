@@ -116,7 +116,6 @@ export function Sidebar({
       {/* Dialog modals — rendered via Portal, appear over everything */}
       {showCreator && (
         <PipelineCreator
-          models={models}
           onClose={() => setShowCreator(false)}
           onCreated={() => {
             setShowCreator(false);

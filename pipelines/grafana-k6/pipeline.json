@@ -10,8 +10,7 @@
       "description": "Extracts custom metrics and the test profile from the k6 script",
       "step": 1,
       "promptFile": "extractor.md",
-      "outputBehavior": "propagate",
-      "inputSource": "files"
+      "type": "generate"
     },
     {
       "role": "architect",
@@ -19,8 +18,7 @@
       "description": "Generates the Grafana dashboard JSON",
       "step": 2,
       "promptFile": "architect.md",
-      "outputBehavior": "propagate",
-      "inputSource": "previous"
+      "type": "generate"
     },
     {
       "role": "reviewer",
@@ -28,9 +26,7 @@
       "description": "Reviews PromQL, layout, units and design",
       "step": 3,
       "promptFile": "reviewer.md",
-      "outputBehavior": "review",
-      "inputSource": "main-output",
-      "correctionTarget": "architect"
+      "type": "review"
     },
     {
       "role": "validator",
@@ -38,8 +34,7 @@
       "description": "Checks that the dashboard JSON can be imported into Grafana",
       "step": 4,
       "promptFile": "validator.md",
-      "outputBehavior": "validate",
-      "inputSource": "main-output"
+      "type": "validate"
     }
   ],
   "maxCorrectionLoops": 2

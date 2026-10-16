@@ -19,5 +19,9 @@ public class ReviewResult
     [JsonPropertyName("suggestions")]
     public List<string> Suggestions { get; set; } = [];
 
-    public bool HasErrors => Issues.Any(i => i.Severity.Equals("error", StringComparison.OrdinalIgnoreCase));
+    [JsonIgnore]
+    public IEnumerable<ReviewIssue> Errors =>
+        Issues.Where(i => string.Equals(i.Severity, "error", StringComparison.OrdinalIgnoreCase));
+
+    public bool HasErrors => Errors.Any();
 }

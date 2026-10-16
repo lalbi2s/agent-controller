@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Plus, Trash2, Save, ChevronUp, ChevronDown } from 'lucide-react'
-import type { ModelInfo } from '../types'
+import { AGENT_TYPES, type AgentType } from '../types'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter,
 } from '@/components/ui/dialog'
@@ -14,17 +14,13 @@ interface AgentDraft {
   name: string
   description: string
   prompt: string
-  provider: string
-  model: string
+  type: AgentType
 }
 
 interface Props {
-  models: ModelInfo[]
   onClose: () => void
   onCreated: () => void
 }
-
-const PROVIDERS = ['anthropic', 'github'] as const
 
 function slugify(text: string): string {
   return text
@@ -38,7 +34,7 @@ function slugify(text: string): string {
     .replace(/^-|-$/g, '')
 }
 
-export function PipelineCreator({ models, onClose, onCreated }: Props) {
+export function PipelineCreator({ onClose, onCreated }: Props) {
   const [displayName, setDisplayName] = useState('')
   const [description, setDescription] = useState('')
   const [outputType, setOutputType] = useState('text')
@@ -48,27 +44,18 @@ export function PipelineCreator({ models, onClose, onCreated }: Props) {
 
   const name = slugify(displayName)
 
-  const defaultModelForProvider = (provider: string) =>
-    models.find(m => m.provider === provider)?.id ?? ''
-
   const addAgent = () => {
-    const defaultProvider = 'anthropic'
     setAgents(prev => [...prev, {
       id: Date.now().toString(),
       name: '',
       description: '',
       prompt: '',
-      provider: defaultProvider,
-      model: defaultModelForProvider(defaultProvider),
+      type: 'generate',
     }])
   }
 
   const updateAgent = (id: string, update: Partial<AgentDraft>) => {
     setAgents(prev => prev.map(a => a.id === id ? { ...a, ...update } : a))
-  }
-
-  const handleProviderChange = (id: string, provider: string) => {
-    updateAgent(id, { provider, model: defaultModelForProvider(provider) })
   }
 
   const removeAgent = (id: string) => {
@@ -116,6 +103,7 @@ export function PipelineCreator({ models, onClose, onCreated }: Props) {
             name: a.name.trim(),
             description: a.description.trim(),
             prompt: a.prompt || `# ${a.name}\n\nPrompt for agent ${a.name}.`,
+            type: a.type,
           }))
         })
       })
@@ -225,20 +213,10 @@ export function PipelineCreator({ models, onClose, onCreated }: Props) {
                   </Button>
                 </div>
 
-                {/* Provider + Model */}
-                <div className="flex gap-1.5 mt-1">
-                  <div className="select-wrap flex-1">
-                    <select value={agent.provider} onChange={e => handleProviderChange(agent.id, e.target.value)}>
-                      {PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-                  <div className="select-wrap flex-1">
-                    <select value={agent.model} onChange={e => updateAgent(agent.id, { model: e.target.value })}>
-                      {models.filter(m => m.provider === agent.provider).map(m => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="select-wrap mt-1">
+                  <select value={agent.type} onChange={e => updateAgent(agent.id, { type: e.target.value as AgentType })}>
+                    {AGENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
                 </div>
 
                 <Textarea

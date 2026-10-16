@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, Save, ChevronUp, ChevronDown } from 'lucide-react'
-import type { PipelineInfo } from '../types'
+import { AGENT_TYPES, type AgentType, type PipelineInfo } from '../types'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter,
 } from '@/components/ui/dialog'
@@ -15,6 +15,7 @@ interface AgentDraft {
   name: string
   description: string
   prompt: string
+  type: AgentType
 }
 
 interface Props {
@@ -51,6 +52,7 @@ export function PipelineEditor({ pipeline, onClose, onSaved }: Props) {
             name: a.name,
             description: a.description ?? '',
             prompt,
+            type: a.type,
           }
         })
       )
@@ -67,7 +69,7 @@ export function PipelineEditor({ pipeline, onClose, onSaved }: Props) {
     setAgents(prev => prev.filter(a => a.id !== id))
 
   const addAgent = () =>
-    setAgents(prev => [...prev, { id: Date.now().toString(), role: '', name: '', description: '', prompt: '' }])
+    setAgents(prev => [...prev, { id: Date.now().toString(), role: '', name: '', description: '', prompt: '', type: 'generate' }])
 
   const moveUp = (idx: number) => {
     if (idx === 0) return
@@ -107,9 +109,11 @@ export function PipelineEditor({ pipeline, onClose, onSaved }: Props) {
           outputType,
           maxCorrectionLoops,
           agents: agents.map(a => ({
+            role: a.role,
             name: a.name.trim(),
             description: a.description.trim(),
             prompt: a.prompt || `# ${a.name}\n\nPrompt for ${a.name}.`,
+            type: a.type,
           })),
         }),
       })
@@ -233,6 +237,12 @@ export function PipelineEditor({ pipeline, onClose, onSaved }: Props) {
                       <Button variant="danger" size="icon" onClick={() => remove(agent.id)} className="flex-shrink-0 h-6 w-6">
                         <Trash2 size={11} strokeWidth={2} />
                       </Button>
+                    </div>
+
+                    <div className="select-wrap mt-1">
+                      <select value={agent.type} onChange={e => update(agent.id, { type: e.target.value as AgentType })}>
+                        {AGENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      </select>
                     </div>
 
                     <Textarea

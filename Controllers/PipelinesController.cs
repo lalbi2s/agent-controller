@@ -96,11 +96,13 @@ public class PipelinesController : ControllerBase
                 Description = a.Description,
                 Step = i + 1,
                 PromptFile = $"{role}.md",
-                OutputBehavior = a.OutputBehavior,
-                InputSource = a.InputSource,
-                CorrectionTarget = a.CorrectionTarget
+                Type = a.Type
             };
         }).ToList();
+
+        var unknownType = agents.FirstOrDefault(a => !AgentTypes.IsValid(a.Type));
+        if (unknownType is not null)
+            throw new ArgumentException($"Unknown agent type '{unknownType.Type}'. Use generate, review or validate.");
 
         if (agents.Select(a => a.Role).Distinct().Count() != agents.Count)
             throw new ArgumentException("Each agent needs a different name");
@@ -161,14 +163,8 @@ public class CreateAgentRequest
     [JsonPropertyName("prompt")]
     public string Prompt { get; set; } = "";
 
-    [JsonPropertyName("outputBehavior")]
-    public string OutputBehavior { get; set; } = "";
-
-    [JsonPropertyName("inputSource")]
-    public string InputSource { get; set; } = "";
-
-    [JsonPropertyName("correctionTarget")]
-    public string? CorrectionTarget { get; set; }
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = AgentTypes.Generate;
 }
 
 public class SavePromptRequest

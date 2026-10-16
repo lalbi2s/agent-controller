@@ -23,6 +23,15 @@ public class PipelineInfo
     public int MaxCorrectionLoops { get; set; } = 2;
 }
 
+public static class AgentTypes
+{
+    public const string Generate = "generate";
+    public const string Review = "review";
+    public const string Validate = "validate";
+
+    public static bool IsValid(string type) => type is Generate or Review or Validate;
+}
+
 public class AgentInfo
 {
     [JsonPropertyName("role")]
@@ -40,14 +49,8 @@ public class AgentInfo
     [JsonPropertyName("promptFile")]
     public string PromptFile { get; set; } = string.Empty;
 
-    [JsonPropertyName("outputBehavior")]
-    public string OutputBehavior { get; set; } = "";
-
-    [JsonPropertyName("inputSource")]
-    public string InputSource { get; set; } = "";
-
-    [JsonPropertyName("correctionTarget")]
-    public string? CorrectionTarget { get; set; }
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = AgentTypes.Generate;
 }
 
 public class AgentConfig

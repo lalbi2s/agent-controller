@@ -15,20 +15,8 @@ public class Metric
     public string? Flow { get; set; }
 }
 
-public class TestProfile
-{
-    [JsonPropertyName("type")]
-    public string Type { get; set; } = "load";
-
-    [JsonPropertyName("maxVUs")]
-    public int MaxVUs { get; set; }
-}
-
 public class ExtractorResult
 {
     [JsonPropertyName("metrics")]
     public List<Metric> Metrics { get; set; } = [];
-
-    [JsonPropertyName("testProfile")]
-    public TestProfile? TestProfile { get; set; }
 }

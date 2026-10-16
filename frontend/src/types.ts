@@ -1,12 +1,18 @@
+export type AgentType = 'generate' | 'review' | 'validate'
+
+export const AGENT_TYPES: { value: AgentType; label: string }[] = [
+  { value: 'generate', label: 'Generate (produces the result)' },
+  { value: 'review', label: 'Review (checks the result, can send it back)' },
+  { value: 'validate', label: 'Validate (checks the result)' },
+]
+
 export interface AgentInfo {
   role: string
   name: string
   description: string
   step: number
   promptFile: string
-  outputBehavior: string      
-  inputSource: string         
-  correctionTarget?: string  
+  type: AgentType
 }
 
 export interface PipelineInfo {
