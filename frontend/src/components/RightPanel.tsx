@@ -317,7 +317,7 @@ export function RightPanel({
             <div className="agent-tab-content">
               <div className="prompt-editor">
                 <div className="prompt-editor-header">
-                  <span className="prompt-editor-label">Prompt — {selectedAgentInfo.name}</span>
+                  <span className="prompt-editor-label">Prompt: {selectedAgentInfo.name}</span>
                   <button
                     className={`btn-save-prompt ${promptSaved ? 'saved' : ''}`}
                     onClick={handleSavePrompt}
@@ -354,7 +354,7 @@ export function RightPanel({
 
               {selectedAgentRole.includes('extract') && metrics.length > 0 && (
                 <div className="agent-io-section">
-                  <div className="agent-io-header extractor">Output — Metrics</div>
+                  <div className="agent-io-header extractor">Output: Metrics</div>
                   <div className="agent-io-block">
                     <div className="agent-io-content">
                       {metrics.map(m => `${m.name} (${m.type})`).join('\n')}
@@ -365,7 +365,7 @@ export function RightPanel({
 
               {selectedAgentRole.includes('review') && review && (
                 <div className="agent-io-section">
-                  <div className="agent-io-header reviewer">Output — Review</div>
+                  <div className="agent-io-header reviewer">Output: Review</div>
                   <div className="agent-io-block">
                     <div className="agent-io-content">
                       {review.issues.map(i => `[${i.severity}] ${i.description}`).join('\n')}

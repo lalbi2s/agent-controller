@@ -134,7 +134,7 @@ export function PipelineEditor({ pipeline, onClose, onSaved }: Props) {
     <Dialog open onOpenChange={open => !open && onClose()}>
       <DialogContent className="max-w-[620px]">
         <DialogHeader>
-          <DialogTitle>Edit — {pipeline.displayName}</DialogTitle>
+          <DialogTitle>Edit: {pipeline.displayName}</DialogTitle>
         </DialogHeader>
 
         {loading ? (

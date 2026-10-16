@@ -35,7 +35,7 @@ export function Timeline({ agents, timings, statuses }: Props) {
         const durationMs = t?.endMs ? t.endMs - t.startMs : 0
         const pct = durationMs > 0 ? (durationMs / maxDuration) * 100 : 0
         const isRunning = status === 'running'
-        const sec = durationMs > 0 ? (durationMs / 1000).toFixed(1) : '—'
+        const sec = durationMs > 0 ? (durationMs / 1000).toFixed(1) : '-'
 
         return (
           <div key={agent.role} className="timeline-row">

@@ -663,7 +663,7 @@ body,
   transform: translateY(1px);
 }
 
-/* Bouton CONTINUE — Breakpoint resume */
+/* Bouton CONTINUE - Breakpoint resume */
 .btn-generate.btn-resume {
   background: #f59e0b;
   color: #000;

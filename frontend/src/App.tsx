@@ -401,19 +401,19 @@ export default function App() {
 
         <div className="stats-row">
           <div className="stat-card">
-            <div className="stat-card-value">{(stats?.metricsCount ?? metrics.length) || '—'}</div>
+            <div className="stat-card-value">{(stats?.metricsCount ?? metrics.length) || '-'}</div>
             <div className="stat-card-label">Metrics</div>
           </div>
           <div className="stat-card">
-            <div className="stat-card-value">{stats?.outputSize ? `${(stats.outputSize / 1024).toFixed(1)}kb` : '—'}</div>
+            <div className="stat-card-value">{stats?.outputSize ? `${(stats.outputSize / 1024).toFixed(1)}kb` : '-'}</div>
             <div className="stat-card-label">Output size</div>
           </div>
           <div className="stat-card">
-            <div className="stat-card-value">{stats?.totalDurationMs ? `${(stats.totalDurationMs / 1000).toFixed(1)}s` : '—'}</div>
+            <div className="stat-card-value">{stats?.totalDurationMs ? `${(stats.totalDurationMs / 1000).toFixed(1)}s` : '-'}</div>
             <div className="stat-card-label">Duration</div>
           </div>
           <div className="stat-card">
-            <div className="stat-card-value">{stats?.correctionLoops ?? '—'}</div>
+            <div className="stat-card-value">{stats?.correctionLoops ?? '-'}</div>
             <div className="stat-card-label">Loops</div>
           </div>
         </div>

@@ -116,7 +116,7 @@ export function Sidebar({
         }
       `}</style>
 
-      {/* Dialog modals — rendered via Portal, appear over everything */}
+      {/* Dialog modals - rendered via Portal, appear over everything */}
       {showCreator && (
         <PipelineCreator
           onClose={() => setShowCreator(false)}
@@ -210,7 +210,7 @@ export function Sidebar({
         </div>
       </div>
 
-      {/* Agents — always visible */}
+      {/* Agents - always visible */}
       <div className="sidebar-section-label" style={{ padding: "0 14px" }}>
         Agents
       </div>
