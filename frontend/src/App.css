@@ -1,6 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap");
 
-/* ═══════════════ DIALOG ANIMATIONS ═══════════════ */
+/* =============== DIALOG ANIMATIONS =============== */
 @keyframes dialog-overlay-in {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -83,14 +83,14 @@ body,
   -webkit-font-smoothing: antialiased;
 }
 
-/* ═══════════════ APP LAYOUT ═══════════════ */
+/* =============== APP LAYOUT =============== */
 .app {
   display: flex;
   height: 100vh;
   background: var(--bg-root);
 }
 
-/* ═══════════════ LEFT SIDEBAR ═══════════════ */
+/* =============== LEFT SIDEBAR =============== */
 .sidebar {
   width: 340px;
   flex-shrink: 0;
@@ -191,7 +191,7 @@ body,
   color: var(--error);
 }
 
-/* ═══════════════ PIPELINE CREATOR ═══════════════ */
+/* =============== PIPELINE CREATOR =============== */
 .pipeline-creator {
   padding: 12px;
   display: flex;
@@ -485,7 +485,6 @@ body,
   color: var(--text);
 }
 
-/* ════ STRUCTURE DE LA CARTE AGENT (Alignement) ════ */
 .agent-card-top {
   display: flex;
   align-items: center;
@@ -504,10 +503,9 @@ body,
   margin-top: 12px;
 }
 
-/* ════ LE JOLI BOUTON TOGGLE (Le vrai !) ════ */
 .toggle {
   position: relative;
-  display: inline-block; /* <- C'est ÇA qui manquait pour lui donner sa forme ! */
+  display: inline-block;
   width: 32px;
   height: 18px;
   flex-shrink: 0;
@@ -542,7 +540,6 @@ body,
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s;
 }
 
-/* 🟢 QUAND C'EST ACTIVÉ (VERT) */
 .toggle input:checked + .toggle-track {
   background: var(--success);
   border-color: var(--success);
@@ -553,7 +550,7 @@ body,
   background: #ffffff; /* Rond blanc bien visible */
 }
 
-/* ═══════════════ CENTER PANEL (MISE EN ÉVIDENCE) ═══════════════ */
+/* CENTER PANEL */
 .center {
   flex: 1;
   display: flex;
@@ -706,7 +703,7 @@ body,
   opacity: 1;
 }
 
-/* ═══════════════ PROMPT EDITOR (Breakpoint) ═══════════════ */
+/* =============== PROMPT EDITOR (Breakpoint) =============== */
 .prompt-editor {
   display: flex;
   flex-direction: column;
@@ -816,7 +813,7 @@ body,
   flex: 1;
 }
 
-/* ═══════════════ LOGS ET EXÉCUTION ═══════════════ */
+/* LOGS */
 .logs-area {
   flex: 1;
   overflow-y: auto;
@@ -880,7 +877,7 @@ body,
   margin-top: 4px;
 }
 
-/* ═══════════════ RIGHT PANEL ═══════════════ */
+/* =============== RIGHT PANEL =============== */
 .right-panel {
   width: 440px;
   background: var(--bg-sidebar);
@@ -940,7 +937,7 @@ body,
   background: var(--border-bright);
   border-radius: 10px;
 }
-/* ═══════════════ AGENT I/O (PANNEAU DE DROITE) ═══════════════ */
+/* AGENT I/O (RIGHT PANEL) */
 .right-content {
   flex: 1;
   overflow-y: auto;
@@ -989,7 +986,6 @@ body,
   font-size: 10px;
   color: var(--text-secondary);
 
-  /* 🛡️ LE BOUCLIER ANTI-DÉBORDEMENT 🛡️ */
   white-space: pre-wrap;
   word-break: break-all; /* Coupe les mots infinis ou les JSON d'une ligne */
   overflow-wrap: anywhere;
@@ -1005,7 +1001,6 @@ body,
   font-size: 11px;
   opacity: 0.6;
 }
-/* 🟢 LE ROND VERT "ACTIF" DE L'AGENT (Indicateur Minimaliste) 🟢 */
 .agent-status-dot.running {
   display: inline-block;
   width: 7px;

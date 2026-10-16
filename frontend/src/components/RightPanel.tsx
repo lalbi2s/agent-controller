@@ -16,7 +16,7 @@ interface Props {
   agentConfigs: Record<string, AgentConfig>
 }
 
-/* ── JSON syntax highlighter ── */
+/* -- JSON syntax highlighter -- */
 function highlightJson(json: string): Array<{ num: number; html: string }> {
   try {
     const formatted = JSON.stringify(JSON.parse(json), null, 2)
@@ -42,7 +42,7 @@ function highlightJson(json: string): Array<{ num: number; html: string }> {
   }
 }
 
-/* ── Dashboard structure ── */
+/* -- Dashboard structure -- */
 interface TreeNode {
   type: 'row' | 'panel'
   title: string
@@ -91,7 +91,7 @@ function agentColorClass(role: string): string {
   return ''
 }
 
-/* ── CSV table renderer ── */
+/* -- CSV table renderer -- */
 function CsvTable({ content }: { content: string }) {
   const rows = content.trim().split('\n').map(r => r.split(','))
   if (rows.length === 0) return null
@@ -124,7 +124,7 @@ function CsvTable({ content }: { content: string }) {
   )
 }
 
-/* ── Output renderer based on type ── */
+/* -- Output renderer based on type -- */
 function OutputRenderer({ content, outputType }: { content: string; outputType: OutputType }) {
   if (outputType === 'json') {
     const lines = highlightJson(content)
