@@ -8,4 +8,8 @@
     <UserSecretsId>agent-controller-local</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="AgentController.Tests/**" />
+  </ItemGroup>
+
 </Project>
