@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>AgentController</RootNamespace>
+    <UserSecretsId>agent-controller-local</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="pipelines/**/*.md" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="pipelines/**/*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

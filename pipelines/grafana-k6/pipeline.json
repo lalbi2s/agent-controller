@@ -1,0 +1,46 @@
+{
+  "name": "grafana-k6",
+  "displayName": "Grafana k6 Dashboard",
+  "description": "Generates a Grafana dashboard from a k6 test script",
+  "outputType": "json",
+  "agents": [
+    {
+      "role": "extractor",
+      "name": "Extractor",
+      "description": "Extracts custom metrics and the test profile from the k6 script",
+      "step": 1,
+      "promptFile": "extractor.md",
+      "outputBehavior": "propagate",
+      "inputSource": "files"
+    },
+    {
+      "role": "architect",
+      "name": "Architect",
+      "description": "Generates the Grafana dashboard JSON",
+      "step": 2,
+      "promptFile": "architect.md",
+      "outputBehavior": "propagate",
+      "inputSource": "previous"
+    },
+    {
+      "role": "reviewer",
+      "name": "Reviewer",
+      "description": "Reviews PromQL, layout, units and design",
+      "step": 3,
+      "promptFile": "reviewer.md",
+      "outputBehavior": "review",
+      "inputSource": "main-output",
+      "correctionTarget": "architect"
+    },
+    {
+      "role": "validator",
+      "name": "Validator",
+      "description": "Checks that the dashboard JSON can be imported into Grafana",
+      "step": 4,
+      "promptFile": "validator.md",
+      "outputBehavior": "validate",
+      "inputSource": "main-output"
+    }
+  ],
+  "maxCorrectionLoops": 2
+}

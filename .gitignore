@@ -1,0 +1,20 @@
+bin/
+obj/
+.vs/
+*.user
+.DS_Store
+TestResults/
+
+# Local configuration and data
+.env
+.env.local
+appsettings.json
+appsettings.Development.json
+data/
+
+# Frontend
+node_modules/
+frontend/dist/
+
+# Frontend build, copied here by `npm run build`
+wwwroot/
