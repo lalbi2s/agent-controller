@@ -4,39 +4,31 @@ using Microsoft.AspNetCore.Mvc;
 namespace AgentController.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
 public class ModelsController : ControllerBase
 {
-    private static readonly List<ModelInfo> AvailableModels =
-    [
-        // Anthropic
-        new() { Id = "claude-haiku-4-5-20251001", Name = "Haiku 4.5",  Provider = "anthropic" },
-        new() { Id = "claude-sonnet-4-20250514",   Name = "Sonnet 4",   Provider = "anthropic" },
-        new() { Id = "claude-opus-4-20250514",     Name = "Opus 4",     Provider = "anthropic" },
+    private readonly IConfiguration _config;
 
-        // GitHub Models
-        new() { Id = "gpt-4o-mini", Name = "GPT-4o Mini", Provider = "github" },
-        new() { Id = "gpt-4o",      Name = "GPT-4o",      Provider = "github" },
-        new() { Id = "o3-mini",     Name = "o3 Mini",     Provider = "github" },
-    ];
-
-    [HttpGet]
-    public IActionResult Get() => Ok(AvailableModels);
-
-    [HttpGet("/api/agent-defaults")]
-    public IActionResult GetAgentDefaults([FromServices] IConfiguration config)
+    public ModelsController(IConfiguration config)
     {
-        var defaults = new Dictionary<string, object>();
-        var roles = new[] { "extractor", "architect", "reviewer", "validator" };
+        _config = config;
+    }
 
-        foreach (var role in roles)
-        {
-            defaults[role] = new
+    // The Models section of the configuration lists the models offered in the interface
+    [HttpGet("api/models")]
+    public IActionResult GetModels() =>
+        Ok(_config.GetSection("Models").Get<List<ModelInfo>>() ?? []);
+
+    // The AgentConfigs section gives the provider and model each agent role starts with
+    [HttpGet("api/agent-defaults")]
+    public IActionResult GetAgentDefaults()
+    {
+        var defaults = _config.GetSection("AgentConfigs").GetChildren().ToDictionary(
+            role => role.Key,
+            role => new
             {
-                provider = config[$"AgentConfigs:{role}:provider"] ?? "anthropic",
-                model = config[$"AgentConfigs:{role}:model"] ?? ""
-            };
-        }
+                provider = role["provider"] ?? "anthropic",
+                model = role["model"] ?? ""
+            });
 
         return Ok(defaults);
     }

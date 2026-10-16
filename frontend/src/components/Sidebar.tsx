@@ -41,7 +41,7 @@ interface Props {
   history: HistoryEntry[];
 }
 
-const PROVIDERS = ["anthropic", "github"] as const;
+const PROVIDERS = ["anthropic", "openai"] as const;
 
 function agentColor(role: string): string {
   const r = role.toLowerCase();

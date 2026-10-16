@@ -8,6 +8,9 @@ public class FileChunkingService
 
     public List<string> Split(string content, int chunkSize)
     {
+        if (chunkSize <= Overlap)
+            throw new ArgumentException($"The chunk size must be larger than the overlap ({Overlap})", nameof(chunkSize));
+
         var chunks = new List<string>();
         int pos = 0;
 

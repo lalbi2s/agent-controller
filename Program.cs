@@ -6,19 +6,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-builder.Services.AddHttpClient<AnthropicClient>();
-builder.Services.AddHttpClient<GitHubModelsClient>();
-
-builder.Services.AddSingleton(sp =>
-{
-    var clients = new List<ILLMClient>
-    {
-        sp.GetRequiredService<AnthropicClient>(),
-        sp.GetRequiredService<GitHubModelsClient>()
-    };
-    var logger = sp.GetRequiredService<ILogger<LLMClientFactory>>();
-    return new LLMClientFactory(clients, logger);
-});
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<ApiKeyResolver>();
+builder.Services.AddSingleton<ILLMClient, AnthropicClient>();
+builder.Services.AddSingleton<ILLMClient, OpenAIClient>();
+builder.Services.AddSingleton<LLMClientFactory>();
 
 builder.Services.AddSingleton(sp => new PromptLoader(
     Path.Combine(builder.Environment.ContentRootPath, "pipelines"),

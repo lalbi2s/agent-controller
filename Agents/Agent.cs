@@ -1,12 +1,14 @@
 using System.Net;
+using System.Text.Json;
 using AgentController.Services;
 
 namespace AgentController.Agents;
 
 public class Agent
 {
-    private readonly LLMClientFactory _factory;
-    private readonly string _preferredProvider;
+    private readonly LLMClientFactory _clients;
+    private readonly string _provider;
+    private readonly string _model;
     private readonly ILogger _logger;
     private string _systemPrompt;
 
@@ -17,117 +19,108 @@ public class Agent
         string name,
         string role,
         string systemPrompt,
-        LLMClientFactory factory,
-        string preferredProvider,
+        LLMClientFactory clients,
+        string provider,
+        string model,
         ILogger logger)
     {
         Name = name;
         Role = role;
         _systemPrompt = systemPrompt;
-        _factory = factory;
-        _preferredProvider = preferredProvider;
+        _clients = clients;
+        _provider = provider;
+        _model = model;
         _logger = logger;
     }
 
     public void SetSystemPrompt(string prompt) => _systemPrompt = prompt;
 
-    public int GetMaxInputChars(string? modelOverride)
-    {
-        var target = !string.IsNullOrEmpty(modelOverride) ? modelOverride : _preferredProvider;
-        return _factory.GetClient(target).MaxInputChars;
-    }
+    /// <summary>Largest input (chars) the provider of this agent accepts in one request.</summary>
+    public int GetMaxInputChars() => _clients.GetClient(_provider).MaxInputChars;
 
-    public async Task<string> ExecuteAsync(string input, string? modelOverride = null, CancellationToken ct = default)
+    /// <summary>
+    /// Runs the agent. With <paramref name="expectJson"/>, the answer must contain valid JSON:
+    /// the request is repeated once if it does not.
+    /// </summary>
+    public async Task<string> ExecuteAsync(string input, bool expectJson, CancellationToken ct = default)
     {
         _logger.LogInformation("[{Agent}] Executing...", Name);
 
-        string targetProviderOrModel = !string.IsNullOrEmpty(modelOverride) ? modelOverride : _preferredProvider;
-        var client = _factory.GetClient(targetProviderOrModel);
+        var raw = await CompleteAsync(input, ct);
+        if (!expectJson)
+            return raw.Trim();
 
-        string raw;
+        var json = ExtractJson(raw);
+        if (json is not null)
+            return json;
+
+        _logger.LogWarning("[{Agent}] The answer is not valid JSON, retrying once", Name);
+        ct.ThrowIfCancellationRequested();
+
+        raw = await CompleteAsync(input, ct);
+        return ExtractJson(raw) ?? raw.Trim();
+    }
+
+    private async Task<string> CompleteAsync(string input, CancellationToken ct)
+    {
+        var client = _clients.GetClient(_provider);
+
+        // The configured model belongs to the configured provider. A substitute provider uses its own default.
+        var model = client.ProviderName.Equals(_provider, StringComparison.OrdinalIgnoreCase) ? _model : "";
 
         try
         {
-            raw = await client.CompleteAsync(_systemPrompt, input, modelOverride ?? "", ct);
+            return await client.CompleteAsync(_systemPrompt, input, model, ct);
         }
-        catch (HttpRequestException ex) when (IsAuthError(ex))
+        catch (HttpRequestException ex) when (ShouldTryAnotherProvider(ex))
         {
-            // API key rejected at runtime → try another available provider
-            _logger.LogWarning("[{Agent}] Provider '{Provider}' returned auth error ({Status}). Trying fallback...",
-                Name, client.ProviderName, ex.StatusCode);
+            var fallback = _clients.GetFallbackClient(client.ProviderName)
+                ?? throw new InvalidOperationException(
+                    $"Provider '{client.ProviderName}' failed ({ex.Message}) and no other provider is available");
 
-            raw = await FallbackCompleteAsync(client, input, modelOverride, ct);
+            _logger.LogWarning("[{Agent}] Provider {Provider} failed with HTTP {Status}, trying {Fallback}",
+                Name, client.ProviderName, (int?)ex.StatusCode, fallback.ProviderName);
+
+            return await fallback.CompleteAsync(_systemPrompt, input, "", ct);
         }
-        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.RequestEntityTooLarge)
-        {
-            // Payload too large for this provider (e.g. GitHub Models on large JSON).
-            // Fall back to the next available provider rather than crashing.
-            _logger.LogWarning(
-                "[{Agent}] Provider '{Provider}' rejected payload (413 — too large, {Chars} chars). Trying fallback...",
-                Name, client.ProviderName, input.Length);
-
-            raw = await FallbackCompleteAsync(client, input, modelOverride, ct);
-        }
-
-        var json = ExtractJson(raw);
-        if (json != null)
-            return json;
-
-        _logger.LogWarning("[{Agent}] Non-JSON response, retrying with same provider...", Name);
-        ct.ThrowIfCancellationRequested();
-
-        client = _factory.GetClient(targetProviderOrModel);
-        raw = await client.CompleteAsync(_systemPrompt, input, modelOverride ?? "", ct);
-        json = ExtractJson(raw);
-
-        // Return raw content if JSON extraction still fails — supports non-JSON output types
-        return json ?? raw;
-    }
-    private async Task<string> FallbackCompleteAsync(
-        ILLMClient failedClient, string input, string? modelOverride, CancellationToken ct)
-    {
-        var fallback = _factory.GetFallbackClient(failedClient.ProviderName)
-            ?? throw new InvalidOperationException(
-                $"[{Name}] Provider '{failedClient.ProviderName}' failed and no fallback provider is available.");
-
-        _logger.LogWarning("[{Agent}] Retrying with fallback provider '{Fallback}'.", Name, fallback.ProviderName);
-        return await fallback.CompleteAsync(_systemPrompt, input, modelOverride ?? "", ct);
     }
 
-    private static bool IsAuthError(HttpRequestException ex)
-        => ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden;
+    // Rejected key, or request too large for this provider
+    private static bool ShouldTryAnotherProvider(HttpRequestException ex) =>
+        ex.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.RequestEntityTooLarge;
 
-    internal static string? ExtractJson(string text)
+    /// <summary>Finds the JSON value in a model answer, which may be wrapped in text or a markdown fence.</summary>
+    public static string? ExtractJson(string text)
     {
         text = text.Trim();
-
-        if ((text.StartsWith('[') && text.EndsWith(']')) ||
-            (text.StartsWith('{') && text.EndsWith('}')))
+        if (IsValidJson(text))
             return text;
 
-        int startArray = text.IndexOf('[');
-        int startObj = text.IndexOf('{');
-
-        if (startArray < 0 && startObj < 0)
-            return null;
-
-        int start;
-        char close;
-
-        if (startArray >= 0 && (startObj < 0 || startArray < startObj))
+        foreach (var (open, close) in new[] { ('{', '}'), ('[', ']') })
         {
-            start = startArray;
-            close = ']';
-        }
-        else
-        {
-            start = startObj;
-            close = '}';
+            int start = text.IndexOf(open);
+            int end = text.LastIndexOf(close);
+            if (start < 0 || end <= start)
+                continue;
+
+            var candidate = text[start..(end + 1)];
+            if (IsValidJson(candidate))
+                return candidate;
         }
 
-        int end = text.LastIndexOf(close);
-        if (end <= start) return null;
+        return null;
+    }
 
-        return text[start..(end + 1)];
+    private static bool IsValidJson(string text)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(text);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 }

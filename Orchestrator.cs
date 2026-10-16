@@ -100,7 +100,7 @@ public class Orchestrator
                 continue;
             }
 
-            agents.Add(new PlannedAgent(_agentFactory.Create(pipeline.Name, info), config, info));
+            agents.Add(new PlannedAgent(_agentFactory.Create(pipeline.Name, info, config), config, info));
         }
 
         return agents;
@@ -140,11 +140,12 @@ public class Orchestrator
         Func<PipelineEvent, Task> emit, CancellationToken ct)
     {
         var agent = planned.Agent;
-        var model = planned.Config.Model;
-        int maxChars = agent.GetMaxInputChars(model);
+        // Review and validate agents always answer with JSON, whatever the output type of the pipeline
+        bool expectJson = planned.Info.Type != AgentTypes.Generate || outputType == "json";
+        int maxChars = agent.GetMaxInputChars();
 
         if (!splitLargeInput || !_chunking.NeedsChunking(input, maxChars))
-            return await agent.ExecuteAsync(input, model, ct);
+            return await agent.ExecuteAsync(input, expectJson, ct);
 
         int chunkSize = (int)(maxChars * 0.8); // leave room for the system prompt
         var chunks = _chunking.Split(input, chunkSize);
@@ -161,7 +162,7 @@ public class Orchestrator
             });
 
             ct.ThrowIfCancellationRequested();
-            results.Add(await agent.ExecuteAsync(chunks[i], model, ct));
+            results.Add(await agent.ExecuteAsync(chunks[i], expectJson, ct));
         }
 
         return _chunking.MergeResults(results, outputType);

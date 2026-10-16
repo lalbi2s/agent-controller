@@ -65,7 +65,7 @@ public class AgentConfig
     public bool Enabled { get; set; } = true;
 
     [JsonPropertyName("provider")]
-    public string Provider { get; set; } = "anthropic";
+    public string Provider { get; set; } = string.Empty;
 }
 
 public class ModelInfo
