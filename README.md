@@ -100,14 +100,26 @@ The encryption keys are created by Data Protection in your user profile (`~/.asp
 3. Click Generate. The log shows each agent, the metrics found, the result of the check and of the review, and any correction loop.
 4. Download the JSON and import it in Grafana (Dashboards, New, Import).
 
-The dashboard assumes k6 sends its metrics to Prometheus with the remote write output, with these settings:
+### Demo stack
+
+`demo/` holds a Docker Compose stack with Grafana, Prometheus and a local copy of QuickPizza, so you can see the generated dashboard with real data without touching the public demo service. All ports are bound to `127.0.0.1` and Grafana has no login, so use it on your own computer only.
+
+```bash
+docker compose -f demo/docker-compose.yml up -d
+demo/run-k6.sh run-1                       # about 70 seconds, sends the metrics to Prometheus
+demo/import-dashboard.sh dashboard.json    # imports the downloaded dashboard
+```
+
+Then open http://localhost:3000 and look for the dashboard "k6 quickpizza-load-test". `docker compose -f demo/docker-compose.yml down` stops the stack.
+
+The dashboard assumes k6 sends its metrics to Prometheus with the remote write output, with these settings (`demo/run-k6.sh` does this):
 
 ```bash
 K6_PROMETHEUS_RW_TREND_STATS="med,p(90),p(95),p(99)" \
 k6 run -o experimental-prometheus-rw --tag testname=quickpizza --tag testid=run-1 samples/quickpizza-load-test.js
 ```
 
-The queries filter on the labels `testname` and `testid`, so keep the two `--tag` options.
+The queries filter on the labels `testname` and `testid`, so keep the two `--tag` options. k6 exports durations in seconds, so the panels use the unit `s`.
 
 ## Pipelines
 

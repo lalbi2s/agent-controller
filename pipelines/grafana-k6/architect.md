@@ -64,7 +64,7 @@ All timeseries are full width (`w: 24`, `h: 10`) and stacked vertically. Only st
 3. One row "<Flow> Flow" per distinct `flow` of the custom metrics, except `misc`. Per Trend, one timeseries with `_med`, `_p95`, `_p99` (legends `p50`, `p95`, `p99`). Per Rate, one timeseries of the `_rate_rate` series in `percentunit`. Per Counter, one timeseries with the throughput query. Per Gauge, one timeseries with `max(k6_metric{...})`. Metrics with the flow `misc` go in a row "Other Metrics".
 4. Only if `testProfile.maxVUs` is above 200, a row "HTTP Detail" with "TTFB" (`k6_http_req_waiting_*`, p50/p95/p99) and "Network Phases" (`k6_http_req_connecting_p95`, `k6_http_req_tls_handshaking_p95`, `k6_http_req_blocked_p95`).
 
-Units: durations (`_duration`, `_waiting`, `_sending`, `_receiving`, `_connecting`, `_blocked`) in `ms`; rates and success values in `percentunit`; data volumes in `decbytes`; counters and VUs in `short`.
+Units: durations (`_duration`, `_waiting`, `_sending`, `_receiving`, `_connecting`, `_blocked`) in `s`, because k6 exports durations to Prometheus in seconds and Grafana formats them; rates and success values in `percentunit`; data volumes in `decbytes`; counters and VUs in `short`.
 
 Dashboard fields: `uid` is `k6-` followed by the source name in kebab-case; `title` contains the source name; `description` is one sentence naming the question this test answers, from `testProfile.type`: load (does latency drift under sustained load?), stress (at how many VUs does the system break?), spike (does it recover after the peak?), soak (does latency drift over time?).
 
@@ -135,7 +135,7 @@ This example shows the structure, one stat and one timeseries. A real dashboard 
         { "refId": "VUs", "expr": "max(k6_vus{testname=~\"$testname\", testid=~\"$testid\"})", "legendFormat": "VUs", "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" } }
       ],
       "fieldConfig": {
-        "defaults": { "unit": "ms", "custom": { "lineWidth": 2, "showPoints": "never" } },
+        "defaults": { "unit": "s", "custom": { "lineWidth": 2, "showPoints": "never" } },
         "overrides": [
           {
             "matcher": { "id": "byName", "options": "VUs" },

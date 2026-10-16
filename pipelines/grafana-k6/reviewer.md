@@ -49,7 +49,7 @@ Checks:
 8. Legends: an empty `legendFormat`, `{{__name__}}`, or a legend containing `{}` or `[]`.
 9. Layout: a timeseries with `w` below 24, or two timeseries side by side.
 10. Overview: it must contain exactly these 6 stat panels: Max VUs, Total Requests, Peak RPS, Checks Pass Rate, HTTP Success Rate, Data Received.
-11. Units: durations in `ms`, rates and success values in `percentunit`, data volumes in `decbytes`, counters and VUs in `short`, requests per second in `reqps`.
+11. Units: durations in `s` (k6 exports durations in seconds, so `ms` would show values 1000 times too small), rates and success values in `percentunit`, data volumes in `decbytes`, counters and VUs in `short`, requests per second in `reqps`.
 12. Timeseries style: `legend.displayMode` is `table` with `calcs` containing at least `mean` and `max`, and `tooltip.mode` is `multi`.
 13. Variables: `templating.list` contains exactly `DS_PROMETHEUS`, `testname` and `testid`.
 
