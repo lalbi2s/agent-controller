@@ -57,7 +57,7 @@ How a run works:
 
 ## Requirements
 
-- .NET SDK 8 or later
+- .NET 10 SDK
 - Node.js 18 or later
 - An API key for Anthropic or for an OpenAI compatible server
 
