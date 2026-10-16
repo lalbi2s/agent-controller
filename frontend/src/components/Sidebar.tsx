@@ -9,9 +9,11 @@ import {
   Plus,
   Trash2,
   Pencil,
+  KeyRound,
 } from "lucide-react";
 import type { PipelineInfo, AgentConfig, ModelInfo } from "../types";
 import { PipelineCreator } from "./PipelineCreator";
+import { ApiKeysPage } from "./ApiKeysPage";
 import { PipelineEditor } from "./PipelineEditor";
 
 interface HistoryEntry {
@@ -95,6 +97,7 @@ export function Sidebar({
 }: Props) {
   const [showCreator, setShowCreator] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
+  const [showKeys, setShowKeys] = useState(false);
 
   const handleProviderChange = (role: string, provider: string) => {
     const firstModel = models.find((m) => m.provider === provider);
@@ -124,6 +127,8 @@ export function Sidebar({
         />
       )}
 
+      {showKeys && <ApiKeysPage onClose={() => setShowKeys(false)} />}
+
       {showEditor && selectedPipeline && (
         <PipelineEditor
           pipeline={selectedPipeline}
@@ -141,6 +146,14 @@ export function Sidebar({
           <Hexagon size={22} strokeWidth={1.5} color="var(--text)" />
         </div>
         <span>Agent-Controller</span>
+        <button
+          className="pc-btn-icon"
+          style={{ marginLeft: "auto" }}
+          onClick={() => setShowKeys(true)}
+          title="API keys"
+        >
+          <KeyRound size={13} strokeWidth={2} />
+        </button>
       </div>
 
       {/* Pipeline selector */}

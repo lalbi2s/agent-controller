@@ -1,12 +1,22 @@
 using AgentController;
 using AgentController.Agents;
 using AgentController.Services;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HostFiltering;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Local use only: no authentication, so the server is not reachable from the network
+builder.WebHost.ConfigureKestrel(options => options.ListenLocalhost(5000));
+builder.Services.Configure<HostFilteringOptions>(options => options.AllowedHosts = ["localhost"]);
+
 builder.Services.AddControllers();
+builder.Services.AddDataProtection().SetApplicationName("AgentController");
 
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton(sp => new ApiKeyStore(
+    Path.Combine(builder.Environment.ContentRootPath, "data", "api-keys.json"),
+    sp.GetRequiredService<IDataProtectionProvider>()));
 builder.Services.AddSingleton<ApiKeyResolver>();
 builder.Services.AddSingleton<ILLMClient, AnthropicClient>();
 builder.Services.AddSingleton<ILLMClient, OpenAIClient>();
