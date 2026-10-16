@@ -1,13 +1,6 @@
 namespace AgentController.Services;
 
-public interface IFileChunkingService
-{
-    bool NeedsChunking(string content, int maxChars);
-    List<string> Split(string content, int chunkSize);
-    string MergeResults(List<string> results, string outputType);
-}
-
-public class FileChunkingService : IFileChunkingService
+public class FileChunkingService
 {
     private const int Overlap = 500;
 

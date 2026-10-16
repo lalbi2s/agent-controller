@@ -61,9 +61,6 @@ public class AgentConfig
     [JsonPropertyName("enabled")]
     public bool Enabled { get; set; } = true;
 
-    [JsonPropertyName("promptFile")]
-    public string? PromptFile { get; set; }
-
     [JsonPropertyName("provider")]
     public string Provider { get; set; } = "anthropic";
 }
@@ -75,9 +72,6 @@ public class ModelInfo
 
     [JsonPropertyName("name")]
     public string Name { get; set; } = string.Empty;
-
-    [JsonPropertyName("tier")]
-    public string Tier { get; set; } = string.Empty;
 
     [JsonPropertyName("provider")]
     public string Provider { get; set; } = string.Empty;

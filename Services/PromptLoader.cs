@@ -3,7 +3,7 @@ using AgentController.Models;
 
 namespace AgentController.Services;
 
-public class PromptLoader : IPromptLoader
+public class PromptLoader
 {
     private readonly string _basePath;
     private readonly ILogger<PromptLoader> _logger;
@@ -56,20 +56,6 @@ public class PromptLoader : IPromptLoader
 
         _logger.LogDebug("Loading prompt from {Path}", path);
         return File.ReadAllText(path);
-    }
-
-    public List<string> GetPromptFiles(string pipelineName)
-    {
-        var dir = Path.Combine(_basePath, pipelineName);
-        if (!Directory.Exists(dir))
-            return [];
-
-        return Directory.GetFiles(dir, "*.md")
-            .Select(Path.GetFileName)
-            .Where(f => f != null)
-            .Cast<string>()
-            .OrderBy(f => f)
-            .ToList();
     }
 
     public void SavePrompt(string pipelineName, string promptFile, string content)

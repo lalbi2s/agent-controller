@@ -3,9 +3,9 @@ using AgentController.Services;
 
 namespace AgentController.Agents;
 
-public class AgentBase : IAgent
+public class Agent
 {
-    private readonly ILLMClientFactory _factory;
+    private readonly LLMClientFactory _factory;
     private readonly string _preferredProvider;
     private readonly ILogger _logger;
     private string _systemPrompt;
@@ -13,11 +13,11 @@ public class AgentBase : IAgent
     public string Name { get; }
     public string Role { get; }
 
-    public AgentBase(
+    public Agent(
         string name,
         string role,
         string systemPrompt,
-        ILLMClientFactory factory,
+        LLMClientFactory factory,
         string preferredProvider,
         ILogger logger)
     {

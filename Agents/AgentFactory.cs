@@ -5,21 +5,16 @@ using AgentController.Services;
 
 namespace AgentController.Agents;
 
-public interface IAgentFactory
+public class AgentFactory
 {
-    IAgent Create(string pipelineName, AgentInfo agentInfo, string? promptFileOverride = null);
-}
-
-public class AgentFactory : IAgentFactory
-{
-    private readonly ILLMClientFactory _clientFactory;  
-    private readonly IPromptLoader _promptLoader;
+    private readonly LLMClientFactory _clientFactory;  
+    private readonly PromptLoader _promptLoader;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IConfiguration _config;            
 
     public AgentFactory(
-        ILLMClientFactory clientFactory,  
-        IPromptLoader promptLoader,
+        LLMClientFactory clientFactory,  
+        PromptLoader promptLoader,
         ILoggerFactory loggerFactory,
         IConfiguration config)            
     {
@@ -29,14 +24,13 @@ public class AgentFactory : IAgentFactory
         _config = config;
     }
 
-    public IAgent Create(string pipelineName, AgentInfo agentInfo, string? promptFileOverride = null)
+    public Agent Create(string pipelineName, AgentInfo agentInfo)
     {
-        var promptFile = promptFileOverride ?? agentInfo.PromptFile;
-        var systemPrompt = _promptLoader.LoadPrompt(pipelineName, promptFile);
+        var systemPrompt = _promptLoader.LoadPrompt(pipelineName, agentInfo.PromptFile);
         var logger = _loggerFactory.CreateLogger($"Agent.{agentInfo.Role}");
 
         var preferredProvider = _config[$"AgentConfigs:{agentInfo.Role}:provider"] ?? "anthropic";
 
-        return new AgentBase(agentInfo.Name, agentInfo.Role, systemPrompt, _clientFactory, preferredProvider, logger);
+        return new Agent(agentInfo.Name, agentInfo.Role, systemPrompt, _clientFactory, preferredProvider, logger);
     }
 }

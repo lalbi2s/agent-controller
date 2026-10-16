@@ -28,9 +28,9 @@ public class AnthropicClient : ILLMClient
         _http.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
     }
 
-    public async Task<string> SendMessageAsync(string systemPrompt, string userMessage, string? modelOverride = null, CancellationToken ct = default)
+    public async Task<string> CompleteAsync(string systemPrompt, string userMessage, string model, CancellationToken ct = default)
     {
-        var model = modelOverride ?? _defaultModel;
+        if (string.IsNullOrWhiteSpace(model)) model = _defaultModel;
         _logger.LogDebug("Calling Anthropic API with model {Model}", model);
 
         var request = new
@@ -61,7 +61,4 @@ public class AnthropicClient : ILLMClient
 
         return textBlock.GetProperty("text").GetString() ?? string.Empty;
     }
-
-    public Task<string> CompleteAsync(string systemPrompt, string userMessage, string model, CancellationToken ct = default)
-        => SendMessageAsync(systemPrompt, userMessage, model, ct);
 }

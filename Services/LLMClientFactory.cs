@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AgentController.Services;
 
-public class LLMClientFactory : ILLMClientFactory
+public class LLMClientFactory
 {
     private readonly IReadOnlyList<ILLMClient> _clients;
     private readonly ILogger<LLMClientFactory> _logger;
@@ -19,7 +19,6 @@ public class LLMClientFactory : ILLMClientFactory
             _logger.LogInformation("LLM provider registered: {Provider} — available: {Available}", c.ProviderName, c.IsAvailable);
     }
 
-    /// <inheritdoc/>
     public ILLMClient GetClient(string preferredProviderOrModel)
     {
         string targetProvider = preferredProviderOrModel;
@@ -65,7 +64,6 @@ public class LLMClientFactory : ILLMClientFactory
             $"No LLM providers are available. Registered: [{string.Join(", ", _clients.Select(c => $"{c.ProviderName}(available={c.IsAvailable})"))}]");
     }
 
-    /// <inheritdoc/>
     public ILLMClient? GetFallbackClient(string excludeProvider)
         => _clients.FirstOrDefault(c => c.ProviderName != excludeProvider && c.IsAvailable);
 }

@@ -2,15 +2,7 @@ using System.Collections.Concurrent;
 
 namespace AgentController.Services;
 
-public interface IBreakpointService
-{
-    string CreateRun();
-    Task WaitForResumeAsync(string runId, CancellationToken ct = default);
-    void Resume(string runId);
-    void CleanupRun(string runId);
-}
-
-public class BreakpointService : IBreakpointService
+public class BreakpointService
 {
     private readonly ConcurrentDictionary<string, TaskCompletionSource> _gates = new();
 

@@ -9,9 +9,9 @@ namespace AgentController.Controllers;
 [Route("api/[controller]")]
 public class PipelinesController : ControllerBase
 {
-    private readonly IPromptLoader _promptLoader;
+    private readonly PromptLoader _promptLoader;
 
-    public PipelinesController(IPromptLoader promptLoader)
+    public PipelinesController(PromptLoader promptLoader)
     {
         _promptLoader = promptLoader;
     }
@@ -24,9 +24,7 @@ public class PipelinesController : ControllerBase
     {
         try
         {
-            var pipeline = _promptLoader.GetPipeline(name);
-            var promptFiles = _promptLoader.GetPromptFiles(name);
-            return Ok(new { pipeline, promptFiles });
+            return Ok(_promptLoader.GetPipeline(name));
         }
         catch (FileNotFoundException)
         {

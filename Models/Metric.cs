@@ -10,21 +10,9 @@ public class Metric
     [JsonPropertyName("type")]
     public string Type { get; set; } = string.Empty;
 
-    [JsonPropertyName("source")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public string? Source { get; set; }
-
     [JsonPropertyName("flow")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public string? Flow { get; set; }
-
-    [JsonPropertyName("imported")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public bool Imported { get; set; }
-
-    [JsonPropertyName("dynamic")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public bool Dynamic { get; set; }
 }
 
 public class TestProfile
@@ -34,21 +22,6 @@ public class TestProfile
 
     [JsonPropertyName("maxVUs")]
     public int MaxVUs { get; set; }
-
-    [JsonPropertyName("totalDurationSeconds")]
-    public int TotalDurationSeconds { get; set; }
-
-    [JsonPropertyName("rampUpDuration")]
-    public string RampUpDuration { get; set; } = string.Empty;
-
-    [JsonPropertyName("sustainDuration")]
-    public string SustainDuration { get; set; } = string.Empty;
-
-    [JsonPropertyName("stagesShape")]
-    public string StagesShape { get; set; } = "plateau";
-
-    [JsonPropertyName("hasRampDown")]
-    public bool HasRampDown { get; set; }
 }
 
 public class ExtractorResult

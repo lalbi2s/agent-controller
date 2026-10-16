@@ -10,15 +10,15 @@ namespace AgentController.Controllers;
 [Route("api/[controller]")]
 public class RunController : ControllerBase
 {
-    private readonly IOrchestrator _orchestrator;
-    private readonly IPromptLoader _promptLoader;
-    private readonly IBreakpointService _breakpointService;
+    private readonly Orchestrator _orchestrator;
+    private readonly PromptLoader _promptLoader;
+    private readonly BreakpointService _breakpointService;
     private readonly ILogger<RunController> _logger;
 
     public RunController(
-        IOrchestrator orchestrator,
-        IPromptLoader promptLoader,
-        IBreakpointService breakpointService,
+        Orchestrator orchestrator,
+        PromptLoader promptLoader,
+        BreakpointService breakpointService,
         ILogger<RunController> logger)
     {
         _orchestrator = orchestrator;

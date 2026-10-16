@@ -19,7 +19,7 @@ builder.Services.AddControllers();
 builder.Services.AddHttpClient<AnthropicClient>();
 builder.Services.AddHttpClient<GitHubModelsClient>();
 
-builder.Services.AddSingleton<ILLMClientFactory>(sp =>
+builder.Services.AddSingleton(sp =>
 {
     var clients = new List<ILLMClient>
     {
@@ -30,11 +30,11 @@ builder.Services.AddSingleton<ILLMClientFactory>(sp =>
     return new LLMClientFactory(clients, logger);
 });
 
-builder.Services.AddSingleton<IPromptLoader, PromptLoader>();
-builder.Services.AddSingleton<IAgentFactory, AgentFactory>();
-builder.Services.AddTransient<IOrchestrator, Orchestrator>();
-builder.Services.AddSingleton<IBreakpointService, BreakpointService>();
-builder.Services.AddSingleton<IFileChunkingService, FileChunkingService>();
+builder.Services.AddSingleton<PromptLoader>();
+builder.Services.AddSingleton<AgentFactory>();
+builder.Services.AddTransient<Orchestrator>();
+builder.Services.AddSingleton<BreakpointService>();
+builder.Services.AddSingleton<FileChunkingService>();
 
 builder.Services.AddCors(options =>
 {

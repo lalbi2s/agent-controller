@@ -6,32 +6,19 @@ using AgentController.Services;
 
 namespace AgentController;
 
-public interface IOrchestrator
+public class Orchestrator
 {
-    Task RunPipelineAsync(
-        string fileContent,
-        string testName,
-        PipelineInfo pipeline,
-        Dictionary<string, AgentConfig> agentConfigs,
-        Func<PipelineEvent, Task> emit,
-        CancellationToken ct = default,
-        string? runId = null,
-        HashSet<string>? breakpoints = null);
-}
-
-public class Orchestrator : IOrchestrator
-{
-    private readonly IAgentFactory _agentFactory;
-    private readonly IPromptLoader _promptLoader;
-    private readonly IBreakpointService _breakpointService;
-    private readonly IFileChunkingService _chunking;
+    private readonly AgentFactory _agentFactory;
+    private readonly PromptLoader _promptLoader;
+    private readonly BreakpointService _breakpointService;
+    private readonly FileChunkingService _chunking;
     private readonly ILogger<Orchestrator> _logger;
 
     public Orchestrator(
-        IAgentFactory agentFactory,
-        IPromptLoader promptLoader,
-        IBreakpointService breakpointService,
-        IFileChunkingService chunking,
+        AgentFactory agentFactory,
+        PromptLoader promptLoader,
+        BreakpointService breakpointService,
+        FileChunkingService chunking,
         ILogger<Orchestrator> logger)
     {
         _agentFactory = agentFactory;
@@ -75,7 +62,7 @@ public class Orchestrator : IOrchestrator
                 ? (currentAgentIndex == 0 ? "files" : "previous")
                 : info.InputSource.ToLower();
 
-            await CheckBreakpointAsync(role, agent, step, pipeline.Name, config.PromptFile ?? info.PromptFile, emit, runId, breakpoints, ct);
+            await CheckBreakpointAsync(role, agent, step, pipeline.Name, info.PromptFile, emit, runId, breakpoints, ct);
             await emit(MakeEvent(PipelineEventType.AgentStart, agent.Name, step, $"Running {agent.Name}..."));
             ct.ThrowIfCancellationRequested();
 
@@ -170,10 +157,10 @@ public class Orchestrator : IOrchestrator
         await EmitCompletion(mainOutput, metrics, testProfile, agentStats, correctionLoops, sw.ElapsedMilliseconds, emit);
     }
 
-    private List<(IAgent Agent, AgentConfig Config, AgentInfo Info)> BuildAgentList(
+    private List<(Agent Agent, AgentConfig Config, AgentInfo Info)> BuildAgentList(
         PipelineInfo pipeline, Dictionary<string, AgentConfig> agentConfigs, Func<PipelineEvent, Task> emit)
     {
-        var result = new List<(IAgent, AgentConfig, AgentInfo)>();
+        var result = new List<(Agent, AgentConfig, AgentInfo)>();
 
         foreach (var agentInfo in pipeline.Agents.OrderBy(a => a.Step))
         {
@@ -182,7 +169,7 @@ public class Orchestrator : IOrchestrator
 
             if (!config.Enabled) continue;
 
-            var agent = _agentFactory.Create(pipeline.Name, agentInfo, config.PromptFile);
+            var agent = _agentFactory.Create(pipeline.Name, agentInfo);
             result.Add((agent, config, agentInfo));
         }
 
@@ -209,7 +196,7 @@ public class Orchestrator : IOrchestrator
     }
 
     private async Task<string> ExecuteWithChunking(
-        IAgent agent, string input, string model, string outputType,
+        Agent agent, string input, string model, string outputType,
         Func<PipelineEvent, Task> emit, CancellationToken ct)
     {
         int maxChars = agent.GetMaxInputChars(model);
@@ -315,7 +302,7 @@ public class Orchestrator : IOrchestrator
     }
 
     private async Task CheckBreakpointAsync(
-        string role, IAgent agent, int step,
+        string role, Agent agent, int step,
         string pipelineName, string promptFile,
         Func<PipelineEvent, Task> emit, string? runId,
         HashSet<string>? breakpoints, CancellationToken ct)
@@ -369,18 +356,6 @@ public class Orchestrator : IOrchestrator
         }
     });
 }
-
-    private static int CountPanels(string output)
-    {
-        try
-        {
-            var doc = JsonDocument.Parse(output);
-            if (doc.RootElement.TryGetProperty("panels", out var panels))
-                return panels.GetArrayLength();
-        }
-        catch { /* not JSON or no panels — fine */ }
-        return 0;
-    }
 
     private static string DetectBehavior(string output)
     {
