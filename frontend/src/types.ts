@@ -22,14 +22,12 @@ export interface AgentConfig {
   role: string
   model: string
   enabled: boolean
-  promptFile: string | null
   provider?: string 
 }
 
 export interface ModelInfo {
   id: string
   name: string
-  tier: string
   provider?: string 
 }
 
@@ -68,8 +66,6 @@ export interface CompletionData {
 export interface Metric {
   name: string
   type: string
-  imported?: boolean
-  dynamic?: boolean
 }
 
 export type AppState = 'idle' | 'running' | 'paused' | 'complete' | 'error'

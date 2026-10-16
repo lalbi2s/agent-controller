@@ -133,8 +133,7 @@ export default function App() {
           role: agent.role,
           model: agentDefaults[agent.role]?.model || (models.length > 0 ? models[0].id : ''),
           provider: agentDefaults[agent.role]?.provider || 'anthropic',
-          enabled: true,
-          promptFile: agent.promptFile
+          enabled: true
         }
       })
       setAgentConfigs(configs)

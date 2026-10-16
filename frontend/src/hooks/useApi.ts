@@ -31,20 +31,6 @@ export function useModels() {
   return models
 }
 
-export function usePromptFiles(pipelineName: string | null) {
-  const [files, setFiles] = useState<string[]>([])
-
-  useEffect(() => {
-    if (!pipelineName) return
-    fetch(`/api/pipelines/${pipelineName}`)
-      .then(r => r.json())
-      .then(data => setFiles(data.promptFiles ?? []))
-      .catch(console.error)
-  }, [pipelineName])
-
-  return files
-}
-
 export function useAgentDefaults() {
   const [defaults, setDefaults] = useState<Record<string, { provider: string; model: string }>>({})
 

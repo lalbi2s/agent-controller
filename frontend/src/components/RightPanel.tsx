@@ -182,7 +182,7 @@ export function RightPanel({
     const agentInfo = selectedPipeline.agents.find(a => a.role === selectedAgentRole)
     if (!agentInfo) return
 
-    const promptFile = agentConfigs[selectedAgentRole]?.promptFile || agentInfo.promptFile
+    const promptFile = agentInfo.promptFile
     setPromptLoading(true)
     setPromptSaved(false)
     fetch(`/api/pipelines/${selectedPipeline.name}/prompts/${promptFile}`)
@@ -206,7 +206,7 @@ export function RightPanel({
     const agentInfo = selectedPipeline.agents.find(a => a.role === selectedAgentRole)
     if (!agentInfo) return
 
-    const promptFile = agentConfigs[selectedAgentRole]?.promptFile || agentInfo.promptFile
+    const promptFile = agentInfo.promptFile
     setPromptSaving(true)
     try {
       await fetch(`/api/pipelines/${selectedPipeline.name}/prompts/${promptFile}`, {
